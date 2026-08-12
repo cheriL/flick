@@ -66,10 +66,10 @@
 
 #### 3.4.1 Apple Translation（普通模式）
 
-- 使用 Apple 的 `Translation` framework（macOS 12+）
+- 使用 Apple 的 `Translation` framework（macOS 12.0 引入；Flick 整体最低 macOS 14.0 来自 MenuBarExtra 要求）
 - 源语言自动检测（`source: nil`）
 - 目标语言 = macOS 系统首选语言（`Locale.preferredLanguages.first`）
-- **注意**：`TranslationSession` 必须挂载在 SwiftUI 视图里才能工作；实现时创建一个隐藏的承载视图
+- **注意**：`TranslationSession` 必须挂载在 SwiftUI 视图里才能工作。实现时创建一个 `HiddenTranslationHost` —— 一个尺寸为 1×1、opacity=0、isHidden=true 的 SwiftUI 视图，作为 `TranslationSession.configuration` 的承载者；它的存在不影响 UI，但让 Apple 框架能正常运行
 
 #### 3.4.2 OpenAI 兼容（AI 模式，按住 `⌘` 触发）
 
@@ -91,6 +91,7 @@
 - **不按 `⌘`** → 普通翻译（Apple Translation）
 - **按住 `⌘`** → AI 翻译
 - 状态在轮询时基于 `NSEvent.modifierFlags` 判断
+- **时机说明**：用户在选词之前按住 `⌘`、或选词之后按住 `⌘` 都会触发 AI 模式 —— 因为轮询在采样那一刻读 `modifierFlags`，只要那时还按着就算 AI
 
 ### 3.6 目标语言
 
@@ -274,7 +275,7 @@
 
 | 风险 | 缓解 |
 |---|---|
-| Apple Translation 必须挂 SwiftUI 视图 | 实现时建一个 `HiddenTranslationHost` 视图，挂载到不可见的 NSPanel / NSWindow 里 |
+| Apple Translation 必须挂 SwiftUI 视图 | 创建一个 `HiddenTranslationHost`（1×1 隐藏 SwiftUI 视图）专门承载 `TranslationSession`，不影响 UI |
 | 不同 Mac App 的 AXUI 行为不一致 | 在多个 App 测一遍（Safari、Chrome、TextEdit、VS Code、Notes）；失败时静默忽略，不崩溃 |
 | ⌘ 采样时机不准 | 用户在轮询间隔（0.3s）内松开 ⌘ 可能误判；可接受为极小概率，必要时把间隔缩短到 0.2s |
 | Keychain 在 sandbox / dev 模式差异 | 用通用 keychain（无 sandbox）；调试时可通过 `security delete-generic-password` 清缓存 |
