@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Flick
 
-@Suite struct ConfigStoreTests {
+@Suite final class ConfigStoreTests {
     let defaults: UserDefaults
     let store: ConfigStore
 
@@ -13,6 +13,10 @@ import Testing
             defaults: d,
             keychainService: "com.cheriL.flick.test.\(UUID().uuidString)"
         )
+    }
+
+    deinit {
+        store.clearKeychain()
     }
 
     @Test func loadReturnsDefaultWhenEmpty() {
