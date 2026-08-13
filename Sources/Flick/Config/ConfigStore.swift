@@ -3,63 +3,56 @@ import Security
 
 final class ConfigStore {
     private let defaults: UserDefaults
+    private let defaultsKey = "Flick.AIConfig"
     private let keychainService: String
     private let keychainAccount = "openai-api-key"
-    private let defaultsKey = "Flick.AIConfig"
 
     init(defaults: UserDefaults = .standard,
          keychainService: String = "com.cheriL.flick") {
         self.defaults = defaults
         self.keychainService = keychainService
+        // One-time migration: pull any pre-existing API key out of the
+        // keychain (the old storage path) and persist it together with
+        // the rest of the config in UserDefaults. The keychain entry is
+        // deleted afterwards so the two stores can't drift.
+        migrateKeychainToDefaults()
     }
 
     func load() -> AIConfig {
-        let cfg: AIConfig
         if let data = defaults.data(forKey: defaultsKey),
            let decoded = try? JSONDecoder().decode(AIConfig.self, from: data) {
-            cfg = decoded
-        } else {
-            cfg = .default
+            return decoded
         }
-        var copy = cfg
-        copy.apiKey = readKeychain() ?? ""
-        return copy
+        return .default
     }
 
     func save(_ cfg: AIConfig) {
-        var withoutKey = cfg
-        let key = withoutKey.apiKey
-        withoutKey.apiKey = ""
-        if let data = try? JSONEncoder().encode(withoutKey) {
+        if let data = try? JSONEncoder().encode(cfg) {
             defaults.set(data, forKey: defaultsKey)
         }
-        if !key.isEmpty {
-            writeKeychain(key)
+    }
+
+    // MARK: - Keychain → defaults migration
+
+    private func migrateKeychainToDefaults() {
+        guard let key = readKeychain(), !key.isEmpty else { return }
+        // Only seed defaults if there's no existing record; we don't want
+        // to clobber a config the user has since updated.
+        if defaults.data(forKey: defaultsKey) == nil {
+            var cfg = AIConfig.default
+            cfg.apiKey = key
+            save(cfg)
         }
+        clearKeychain()
     }
 
-    func clearKeychain() {
+    private func clearKeychain() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: keychainAccount,
         ]
         SecItemDelete(query as CFDictionary)
-    }
-
-    // MARK: - Keychain helpers
-
-    private func writeKeychain(_ value: String) {
-        let data = Data(value.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-        ]
-        SecItemDelete(query as CFDictionary)
-        var add = query
-        add[kSecValueData as String] = data
-        SecItemAdd(add as CFDictionary, nil)
     }
 
     private func readKeychain() -> String? {

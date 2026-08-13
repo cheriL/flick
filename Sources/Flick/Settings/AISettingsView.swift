@@ -2,13 +2,19 @@ import SwiftUI
 
 struct AISettingsView: View {
     let store: ConfigStore
+    /// Invoked when the user dismisses the settings (save button or other
+    /// dismiss path). The hosting window uses this to close itself. We
+    /// don't use `@Environment(\.dismiss)` because the view can be hosted
+    /// in either a SwiftUI popover (where it works) or a plain NSWindow
+    /// (where there's no presentation to dismiss).
+    let onDismiss: () -> Void
     @State private var draft: AIConfig
     @State private var testResult: String?
     @State private var isTesting = false
-    @Environment(\.dismiss) private var dismiss
 
-    init(store: ConfigStore) {
+    init(store: ConfigStore, onDismiss: @escaping () -> Void = {}) {
         self.store = store
+        self.onDismiss = onDismiss
         _draft = State(initialValue: store.load())
     }
 
@@ -38,7 +44,7 @@ struct AISettingsView: View {
                 Spacer()
                 Button("保存") {
                     store.save(draft)
-                    dismiss()
+                    onDismiss()
                 }
                 .keyboardShortcut(.defaultAction)
             }

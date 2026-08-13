@@ -7,7 +7,6 @@ struct MenuBarContent: View {
     let store: ConfigStore
     let onQuit: () -> Void
 
-    @State private var showingAISettings = false
     /// Re-checked while the menu is visible. Updated via Combine from a
     /// 1 Hz timer that we start in `.onAppear` and stop in `.onDisappear`,
     /// so the timer only runs while the menu is actually open — no leak
@@ -38,10 +37,9 @@ struct MenuBarContent: View {
 
         Text("⌘  按住 ⌘ 选词 → AI 翻译")
         Divider()
-        Button("AI 设置…") { showingAISettings.toggle() }
-            .popover(isPresented: $showingAISettings, arrowEdge: .bottom) {
-                AISettingsView(store: store)
-            }
+        Button("AI 设置…") {
+            AISettingsWindow.show(store: store)
+        }
         Button("启动 Chrome (辅助模式)") {
             ChromeLaunch.launchWithAccessibilityFlag()
         }
@@ -123,5 +121,49 @@ enum ChromeLaunch {
         task.launchPath = "/bin/sh"
         task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
         try? task.run()
+    }
+}
+
+/// Hosts the AI settings SwiftUI view in a regular `NSWindow`.
+///
+/// We can't use a SwiftUI `.popover` from inside `MenuBarExtra`'s default
+/// menu-style content: when the user clicks a menu item, the menu
+/// dismisses immediately and the popover's anchor view is gone before the
+/// popover can present. A standalone window has its own lifecycle and is
+/// shown reliably from a menu click.
+///
+/// A single instance is reused — calling `show` again just brings the
+/// existing window forward — so clicking the menu item twice doesn't
+/// stack settings windows.
+enum AISettingsWindow {
+    private static var window: NSWindow?
+
+    static func show(store: ConfigStore) {
+        if let existing = window {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let host = NSHostingController(rootView: AISettingsView(store: store) {
+            window?.close()
+            window = nil
+        })
+        let w = NSWindow(contentViewController: host)
+        w.title = "Flick AI 设置"
+        w.styleMask = [.titled, .closable, .miniaturizable]
+        w.isReleasedWhenClosed = false
+        // Auto-size to the SwiftUI view's intrinsic size. AISettingsView
+        // declares `frame(width: 360)` plus padding; this just nudges the
+        // initial content size to a reasonable default.
+        w.setContentSize(NSSize(width: 360, height: 320))
+        w.center()
+        // If the user closes via the red traffic-light button, drop the
+        // cached reference so the next menu click re-creates a fresh one.
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { _ in
+            if window === w { window = nil }
+        }
+        window = w
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

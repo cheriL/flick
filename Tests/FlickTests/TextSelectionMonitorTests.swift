@@ -36,6 +36,10 @@ final class FakeProvider: SelectionProvider {
     }
 
     @Test func doesNotPostWhenSelectionUnchanged() async {
+        // First selection is posted (we want the button to appear even
+        // when Flick starts up with text already selected), subsequent
+        // identical selections are deduplicated. So three identical
+        // polls → exactly one notification.
         let fake = FakeProvider()
         fake.queue = [("hello", 1), ("hello", 1), ("hello", 1)]
         let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
@@ -48,7 +52,7 @@ final class FakeProvider: SelectionProvider {
         try? await Task.sleep(for: .milliseconds(200))
         monitor.stop()
         NotificationCenter.default.removeObserver(token)
-        #expect(posts == 0)
+        #expect(posts == 1)
     }
 
     @Test func ignoresEmptyAndTooLongSelections() async {

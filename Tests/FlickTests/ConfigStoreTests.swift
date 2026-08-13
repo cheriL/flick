@@ -3,20 +3,27 @@ import Testing
 @testable import Flick
 
 @Suite final class ConfigStoreTests {
+    let suiteName: String
     let defaults: UserDefaults
     let store: ConfigStore
 
     init() {
-        let d = UserDefaults(suiteName: "test.\(UUID().uuidString)")!
+        let name = "test.\(UUID().uuidString)"
+        self.suiteName = name
+        let d = UserDefaults(suiteName: name)!
         self.defaults = d
-        self.store = ConfigStore(
-            defaults: d,
-            keychainService: "com.cheriL.flick.test.\(UUID().uuidString)"
-        )
+        self.store = ConfigStore(defaults: d)
     }
 
     deinit {
-        store.clearKeychain()
+        // Drop the dedicated defaults domain so the suite's plist
+        // (`test.<UUID>.plist` in ~/Library/Preferences) doesn't
+        // accumulate across test runs. `removePersistentDomain`
+        // clears the in-memory store but cfprefsd leaves an empty
+        // file shell behind, so we also delete it directly.
+        defaults.removePersistentDomain(forName: suiteName)
+        let plistPath = NSHomeDirectory() + "/Library/Preferences/\(suiteName).plist"
+        try? FileManager.default.removeItem(atPath: plistPath)
     }
 
     @Test func loadReturnsDefaultWhenEmpty() {
@@ -39,15 +46,16 @@ import Testing
         #expect(loaded.model == "claude-haiku-4-5")
     }
 
-    @Test func keychainIsSeparateFromDefaults() throws {
+    @Test func persistedPlistContainsAllFields() throws {
         var cfg = store.load()
         cfg.apiKey = "secret-abc"
         store.save(cfg)
 
-        // Non-secret fields may be persisted in UserDefaults,
-        // but the API key must NEVER appear there.
+        // After the Keychain removal, every field (including the API
+        // key) lives in UserDefaults. The plist on disk must round-trip
+        // the full config.
         let raw = try #require(defaults.data(forKey: "Flick.AIConfig"))
         let stored = try JSONDecoder().decode(AIConfig.self, from: raw)
-        #expect(stored.apiKey.isEmpty)
+        #expect(stored.apiKey == "secret-abc")
     }
 }
