@@ -1,5 +1,8 @@
 import AppKit
 import Foundation
+import os.log
+
+private let monLog = Logger(subsystem: "com.cheriL.flick", category: "monitor")
 
 protocol SelectionProvider {
     /// Returns the currently selected text and the owning process id, or nil.
@@ -24,6 +27,8 @@ final class TextSelectionMonitor {
     private var timer: Timer?
     private var lastText: String?
     private var hasSeenValid = false
+    private var lastFrontmostPID: pid_t = 0
+    private var tickCount: Int = 0
 
     init(provider: SelectionProvider, interval: TimeInterval = 0.3) {
         self.provider = provider
@@ -45,6 +50,21 @@ final class TextSelectionMonitor {
     }
 
     private func poll() {
+        tickCount += 1
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let frontName = frontmost?.localizedName ?? "?"
+        let frontPID = frontmost?.processIdentifier ?? 0
+
+        // Log when frontmost changes — that's the signal a new app was
+        // activated. Also log every ~3s so a stuck-on-one-app state is
+        // visible in the log.
+        if frontPID != lastFrontmostPID {
+            monLog.notice("frontmost -> \(frontName, privacy: .public) (pid \(frontPID, privacy: .public))")
+            lastFrontmostPID = frontPID
+        } else if tickCount % 10 == 0 {
+            monLog.debug("still frontmost: \(frontName, privacy: .public) (pid \(frontPID, privacy: .public))")
+        }
+
         guard let (text, _) = provider.currentSelection() else {
             return
         }
