@@ -7,6 +7,7 @@ final class MenuBarController {
     private let panel: FloatingPanelController
     private let monitor: TextSelectionMonitor
     private var subscription: NSObjectProtocol?
+    private var clearedSubscription: NSObjectProtocol?
     private var currentTask: Task<Void, Never>?
     private var lastText: String?
 
@@ -36,12 +37,19 @@ final class MenuBarController {
         ) { [weak self] note in
             self?.handle(note)
         }
+        clearedSubscription = NotificationCenter.default.addObserver(
+            forName: .flickSelectionCleared, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.panel.dismiss()
+        }
     }
 
     func stop() {
         monitor.stop()
         if let s = subscription { NotificationCenter.default.removeObserver(s) }
+        if let s = clearedSubscription { NotificationCenter.default.removeObserver(s) }
         subscription = nil
+        clearedSubscription = nil
         currentTask?.cancel()
         panel.dismiss()
     }
