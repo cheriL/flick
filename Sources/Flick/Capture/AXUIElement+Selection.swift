@@ -49,9 +49,9 @@ extension AXUIElement {
         let focused = focusedRef as! AXUIElement
 
         // --- Path A: standard `kAXSelectedTextAttribute`. Works for NSText
-        // views (TextEdit, iTerm2, native macOS text fields). Often returns
-        // empty/nil for WKWebView/Safari web content, where selection lives
-        // behind a range parameterised attribute instead.
+        // views (TextEdit, iTerm2, native macOS text fields like the
+        // Safari address bar). Often returns empty for WKWebView/Safari
+        // web content — Path B handles that.
         var selectedRef: CFTypeRef?
         let selectedStatus = AXUIElementCopyAttributeValue(
             focused,
@@ -64,8 +64,17 @@ extension AXUIElement {
             return str
         }
 
-        // --- Path B: web content / Safari / Chrome. Walk down to the
-        // deepest selected child, then resolve selection via range.
+        // --- Path B: web content. WKWebView exposes the full visible text
+        // as `kAXValueAttribute` and the selection as a CFRange. Substring
+        // the value with the range. This is the documented approach for
+        // Safari / Chrome pages.
+        if let webStr = selectedTextViaValuePlusRange(in: focused) {
+            return webStr
+        }
+
+        // --- Path C: deep web content where the focused element is a
+        // higher-level container and the actual selected node is a child
+        // (some Safari web components behave this way).
         if let rangeStr = selectedTextViaRange(in: focused) {
             return rangeStr
         }
@@ -74,9 +83,43 @@ extension AXUIElement {
         return nil
     }
 
+    /// Read full text via `kAXValueAttribute`, slice it with the range
+    /// reported by `kAXSelectedTextRangeAttribute`. This is what WKWebView
+    /// web content exposes.
+    private static func selectedTextViaValuePlusRange(in element: AXUIElement) -> String? {
+        var valueRef: CFTypeRef?
+        let valueStatus = AXUIElementCopyAttributeValue(
+            element,
+            kAXValueAttribute as CFString,
+            &valueRef
+        )
+        guard valueStatus == .success, let full = valueRef as? String, !full.isEmpty else {
+            return nil
+        }
+        var rangeRef: CFTypeRef?
+        let rangeStatus = AXUIElementCopyAttributeValue(
+            element,
+            kAXSelectedTextRangeAttribute as CFString,
+            &rangeRef
+        )
+        guard rangeStatus == .success, let axVal = rangeRef else { return nil }
+        var range = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(axVal as! AXValue, .cfRange, &range),
+              range.length > 0,
+              range.location >= 0,
+              range.location + range.length <= full.utf16.count
+        else { return nil }
+
+        // CFRange uses UTF-16 code units (matches the AX API), so slice
+        // via the UTF-16 view and re-bridge back to String.
+        let utf16 = Array(full.utf16)
+        let slice = Array(utf16[range.location ..< range.location + range.length])
+        return String(utf16CodeUnits: slice, count: slice.count)
+    }
+
     /// Walk down the focused element's children looking for one that has a
-    /// non-empty `kAXSelectedTextRangeAttribute`. Web content typically
-    /// exposes selection on a deeply-nested text node, not the web area
+    /// non-empty `kAXSelectedTextRangeAttribute`. Some web components
+    /// expose selection on a deeply-nested text node, not the web area
     /// itself. Resolves the range with `kAXStringForRangeParameterizedAttribute`.
     private static func selectedTextViaRange(in root: AXUIElement) -> String? {
         var queue: [AXUIElement] = [root]
