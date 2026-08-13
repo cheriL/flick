@@ -42,6 +42,9 @@ struct MenuBarContent: View {
             .popover(isPresented: $showingAISettings, arrowEdge: .bottom) {
                 AISettingsView(store: store)
             }
+        Button("启动 Chrome (辅助模式)") {
+            ChromeLaunch.launchWithAccessibilityFlag()
+        }
         Divider()
         Button("退出 Flick", action: onQuit)
             .keyboardShortcut("q")
@@ -106,5 +109,19 @@ enum PermissionGrant {
         task.arguments = ["-c", "sleep 0.2 && open \"\(bundlePath)\""]
         try? task.run()
         NSApp.terminate(nil)
+    }
+}
+
+/// Launches Google Chrome with the `--force-renderer-accessibility` flag
+/// so Chrome's renderer process exposes web content to macOS Accessibility.
+/// Without this, `AXUIElement` calls into Chrome's web content fail
+/// (Chrome's main process tree doesn't include the `AXWebArea`s, only the
+/// owning window) and Flick can't read selected text in web pages.
+enum ChromeLaunch {
+    static func launchWithAccessibilityFlag() {
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
+        try? task.run()
     }
 }

@@ -32,7 +32,6 @@ final class TextSelectionMonitor {
     private let interval: TimeInterval
     private var timer: Timer?
     private var lastText: String?
-    private var hasSeenValid = false
     private var lastFrontmostPID: pid_t = 0
     private var tickCount: Int = 0
 
@@ -75,25 +74,22 @@ final class TextSelectionMonitor {
             // No selection in the frontmost app. If we previously had a
             // selection, signal the controller to dismiss the lingering
             // trigger panel so it doesn't sit at an old position forever.
-            if hasSeenValid {
-                hasSeenValid = false
+            if lastText != nil {
                 lastText = nil
                 NotificationCenter.default.post(name: .flickSelectionCleared, object: nil)
             }
             return
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isValid = !trimmed.isEmpty && trimmed.count <= 5000
-
-        // The first valid selection just establishes the baseline —
-        // we can't tell if it "changed" or was already this way when we started.
-        if !hasSeenValid {
-            hasSeenValid = true
-            if isValid { lastText = trimmed }
+        guard !trimmed.isEmpty && trimmed.count <= 5000 else {
+            // Whitespace-only or too long — treat as cleared so the next
+            // real selection isn't masked by an equal `lastText`.
+            if lastText != nil {
+                lastText = nil
+                NotificationCenter.default.post(name: .flickSelectionCleared, object: nil)
+            }
             return
         }
-
-        guard isValid else { return }
         if trimmed == lastText { return }
         lastText = trimmed
 
