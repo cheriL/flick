@@ -87,6 +87,10 @@ final class MenuBarController {
 
         // Show trigger button first; the actual translation happens on tap.
         panel.showTrigger(at: cursor, text: text, isAI: isAI) { [weak self] in
+            // Mark the selection as consumed so ⌘ toggles, flag changes,
+            // or any other event that re-polls won't re-show the trigger
+            // over the result panel that's about to appear.
+            self?.monitor.markConsumed()
             self?.runTranslation(text: text, at: cursor, isAI: isAI)
         }
     }
