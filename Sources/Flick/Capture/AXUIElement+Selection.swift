@@ -283,16 +283,73 @@ extension AXUIElement {
             return nil
         }
         axLog.notice("windows walk: \(windows.count, privacy: .public) windows")
-        for window in windows {
+        for (idx, window) in windows.enumerated() {
+            let windowRole = Self.role(of: window) ?? "?"
+            let windowChildren = countChildren(of: window)
+            axLog.notice("windows walk: window[\(idx, privacy: .public)] role=\(windowRole, privacy: .public) totalDescendants=\(windowChildren, privacy: .public)")
             // Look for AXWebArea in the window tree (BFS, capped depth).
-            if let webArea = findRole(.webArea, in: window, maxDepth: 12) {
+            if let webArea = findRole(.webArea, in: window, maxDepth: 20) {
                 if let str = extractViaTextMarker(in: webArea) {
                     axLog.notice("windows walk: HIT via AXWebArea len=\(str.count, privacy: .public)")
                     return str
+                } else {
+                    axLog.notice("windows walk: AXWebArea found but no text marker")
                 }
+            } else {
+                // Log the first few unique roles in the tree to help
+                // diagnose Chrome's structure.
+                let roles = collectRoles(in: window, maxDepth: 20, maxSamples: 8)
+                axLog.notice("windows walk: no AXWebArea; roles=\(roles, privacy: .public)")
             }
         }
         return nil
+    }
+
+    private static func countChildren(of root: AXUIElement) -> Int {
+        var queue: [AXUIElement] = [root]
+        var seen = Set<ObjectIdentifier>()
+        var count = 0
+        for _ in 0..<20 {
+            guard let node = queue.first else { break }
+            queue.removeFirst()
+            let id = ObjectIdentifier(node)
+            if seen.contains(id) { continue }
+            seen.insert(id)
+            count += 1
+            var childrenRef: CFTypeRef?
+            let status = AXUIElementCopyAttributeValue(
+                node, kAXChildrenAttribute as CFString, &childrenRef
+            )
+            if status == .success, let arr = childrenRef as? [AXUIElement] {
+                queue.append(contentsOf: arr)
+            }
+        }
+        return count
+    }
+
+    private static func collectRoles(in root: AXUIElement, maxDepth: Int, maxSamples: Int) -> String {
+        var queue: [AXUIElement] = [root]
+        var seen = Set<ObjectIdentifier>()
+        var roles: [String] = []
+        for _ in 0..<maxDepth {
+            guard let node = queue.first else { break }
+            queue.removeFirst()
+            let id = ObjectIdentifier(node)
+            if seen.contains(id) { continue }
+            seen.insert(id)
+            if let r = Self.role(of: node) {
+                if !roles.contains(r) { roles.append(r) }
+                if roles.count >= maxSamples { break }
+            }
+            var childrenRef: CFTypeRef?
+            let status = AXUIElementCopyAttributeValue(
+                node, kAXChildrenAttribute as CFString, &childrenRef
+            )
+            if status == .success, let arr = childrenRef as? [AXUIElement] {
+                queue.append(contentsOf: arr)
+            }
+        }
+        return roles.joined(separator: ",")
     }
 
     private enum TargetRole { case webArea }
