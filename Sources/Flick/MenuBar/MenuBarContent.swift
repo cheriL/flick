@@ -37,14 +37,14 @@ struct MenuBarContent: View {
 
         Text("⌘  按住 ⌘ 选词 → AI 翻译")
         Divider()
-        Button("AI 设置…") {
-            AISettingsWindow.show(store: store)
-        }
         Button("启动 Chrome (辅助模式)") {
             ChromeLaunch.launchWithAccessibilityFlag()
         }
+        Button("设置…") {
+            AISettingsWindow.show(store: store)
+        }
         Divider()
-        Button("退出 Flick", action: onQuit)
+        Button("退出", action: onQuit)
             .keyboardShortcut("q")
     }
 
@@ -149,13 +149,15 @@ enum AISettingsWindow {
             window = nil
         })
         let w = NSWindow(contentViewController: host)
-        w.title = "Flick AI 设置"
+        w.title = "Flick 设置"
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.isReleasedWhenClosed = false
         // Auto-size to the SwiftUI view's intrinsic size. AISettingsView
-        // declares `frame(width: 360)` plus padding; this just nudges the
-        // initial content size to a reasonable default.
-        w.setContentSize(NSSize(width: 360, height: 320))
+        // declares `frame(width: 440)` plus the form's section padding;
+        // this just nudges the initial content size to a reasonable
+        // default. macOS will then grow/shrink the window as the view
+        // reports a different intrinsic size.
+        w.setContentSize(NSSize(width: 440, height: 360))
         w.center()
         // If the user closes via the red traffic-light button, drop the
         // cached reference so the next menu click re-creates a fresh one.
