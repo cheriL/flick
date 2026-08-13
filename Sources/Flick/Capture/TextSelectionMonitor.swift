@@ -45,7 +45,9 @@ final class TextSelectionMonitor {
     }
 
     private func poll() {
-        guard let (text, _) = provider.currentSelection() else { return }
+        guard let (text, _) = provider.currentSelection() else {
+            return
+        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let isValid = !trimmed.isEmpty && trimmed.count <= 5000
 

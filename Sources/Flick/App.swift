@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import ApplicationServices
 
 @main
 struct FlickApp: App {
@@ -11,7 +13,14 @@ struct FlickApp: App {
                 onQuit: { NSApp.terminate(nil) }
             )
         } label: {
-            Image(systemName: "character.bubble")
+            // Same trick as MenuBarContent: TimelineView re-checks
+            // `AXIsProcessTrusted()` every second so the icon swaps to
+            // an exclamation glyph the moment permission is granted.
+            TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+                Image(systemName: AXUIElement.isProcessTrusted
+                      ? "character.bubble"
+                      : "exclamationmark.bubble")
+            }
         }
     }
 }
