@@ -60,6 +60,9 @@ struct MenuBarContent: View {
                     PermissionGrant.openSystemSettingsAccessibility()
                     PermissionGrant.triggerAXPrompt()
                 }
+                Button("重启 Flick") {
+                    PermissionGrant.relaunchSelf()
+                }
                 Button("重新检测") {
                     isTrusted = AXUIElement.isProcessTrusted
                 }
@@ -76,11 +79,32 @@ enum PermissionGrant {
         _ = AXIsProcessTrustedWithOptions(opts)
     }
 
-    /// Opens System Settings directly to the Accessibility privacy pane.
-    /// URL scheme is documented Apple behaviour (macOS 13+).
+    /// Opens System Settings directly to the Accessibility pane.
+    /// We try the canonical URL first, fall back to the universal-access
+    /// root if macOS rejects it (different releases accept different
+    /// spellings).
     static func openSystemSettingsAccessibility() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
+        let urls = [
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"),
+            URL(string: "x-apple.systempreferences:com.apple.preference.universalaccess"),
+        ].compactMap { $0 }
+        for url in urls where NSWorkspace.shared.open(url) {
+            return
         }
+    }
+
+    /// Relaunches this app fresh — needed because macOS only honours an
+    /// Accessibility grant after the process restarts; the existing
+    /// process keeps getting `AXIsProcessTrusted() == false` until then.
+    static func relaunchSelf() {
+        let bundlePath = Bundle.main.bundlePath
+        // Spawn a tiny shell that waits for us to exit, then opens the
+        // .app again. Calling `NSWorkspace.openApplication` from inside
+        // `applicationWillTerminate` is unreliable, hence the detour.
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", "sleep 0.2 && open \"\(bundlePath)\""]
+        try? task.run()
+        NSApp.terminate(nil)
     }
 }
