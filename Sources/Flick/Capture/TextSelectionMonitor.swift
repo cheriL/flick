@@ -19,6 +19,12 @@ struct AXSelectionProvider: SelectionProvider {
 
 extension Notification.Name {
     static let flickSelectionChanged = Notification.Name("Flick.selectionChanged")
+    /// Posted when the previously-observed selection has cleared (e.g. the
+    /// user clicked into an empty area, switched to an app that doesn't
+    /// expose selection, or the frontmost app's selection went empty). The
+    /// controller uses this to dismiss the lingering trigger button so it
+    /// doesn't stay stuck on the screen at an old position.
+    static let flickSelectionCleared = Notification.Name("Flick.selectionCleared")
 }
 
 final class TextSelectionMonitor {
@@ -66,6 +72,14 @@ final class TextSelectionMonitor {
         }
 
         guard let (text, _) = provider.currentSelection() else {
+            // No selection in the frontmost app. If we previously had a
+            // selection, signal the controller to dismiss the lingering
+            // trigger panel so it doesn't sit at an old position forever.
+            if hasSeenValid {
+                hasSeenValid = false
+                lastText = nil
+                NotificationCenter.default.post(name: .flickSelectionCleared, object: nil)
+            }
             return
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
