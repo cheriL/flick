@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct AISettingsView: View {
     let store: ConfigStore
@@ -11,6 +12,8 @@ struct AISettingsView: View {
     @State private var draft: AIConfig
     @State private var testResult: String?
     @State private var isTesting = false
+    @State private var autoStartEnabled: Bool = AutoStart.isEnabled
+    @State private var autoStartError: String?
 
     init(store: ConfigStore, onDismiss: @escaping () -> Void = {}) {
         self.store = store
@@ -19,38 +22,64 @@ struct AISettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Picker("服务商", selection: $draft.provider) {
-                ForEach(Provider.allCases, id: \.self) { p in
-                    Text(p.displayName).tag(p)
-                }
-            }
-            TextField("Base URL", text: $draft.baseURL)
-                .textFieldStyle(.roundedBorder)
-            SecureField("API Key", text: $draft.apiKey)
-                .textFieldStyle(.roundedBorder)
-            TextField("模型", text: $draft.model)
-                .textFieldStyle(.roundedBorder)
+        VStack(alignment: .leading, spacing: 0) {
+            Form {
+                Section("OpenAI") {
+                    TextField("Base URL", text: $draft.baseURL)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("API Key", text: $draft.apiKey)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("模型", text: $draft.model)
+                        .textFieldStyle(.roundedBorder)
 
-            HStack {
-                Button("测试连接") { runTest() }
-                    .disabled(isTesting || draft.apiKey.isEmpty)
-                if let r = testResult {
-                    Text(r).font(.caption).foregroundStyle(r.hasPrefix("✓") ? .green : .red)
+                    HStack {
+                        Button("测试连接") { runTest() }
+                            .disabled(isTesting || draft.apiKey.isEmpty)
+                        if let r = testResult {
+                            Text(r).font(.caption).foregroundStyle(r.hasPrefix("✓") ? .green : .red)
+                        }
+                    }
+                }
+
+                Section("通用") {
+                    Toggle("开机自启动", isOn: Binding(
+                        get: { autoStartEnabled },
+                        set: { newValue in
+                            setAutoStart(newValue)
+                        }
+                    ))
+                    if let err = autoStartError {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
             }
+            .formStyle(.grouped)
 
             HStack {
                 Spacer()
-                Button("保存") {
-                    store.save(draft)
-                    onDismiss()
-                }
-                .keyboardShortcut(.defaultAction)
+                Button("保存") { save() }
+                    .keyboardShortcut(.defaultAction)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(16)
-        .frame(width: 360)
+        .frame(width: 440)
+    }
+
+    private func setAutoStart(_ enabled: Bool) {
+        do {
+            if enabled { try AutoStart.enable() } else { try AutoStart.disable() }
+            autoStartEnabled = AutoStart.isEnabled
+            autoStartError = nil
+        } catch {
+            // Reflect the actual OS state — if register() threw, the
+            // toggle is still off. Keep the user's intended value out of
+            // the UI so they see what's really true.
+            autoStartEnabled = AutoStart.isEnabled
+            autoStartError = "无法更改自启动设置：\(error.localizedDescription)"
+        }
     }
 
     private func runTest() {
@@ -71,5 +100,10 @@ struct AISettingsView: View {
                 }
             }
         }
+    }
+
+    private func save() {
+        store.save(draft)
+        onDismiss()
     }
 }

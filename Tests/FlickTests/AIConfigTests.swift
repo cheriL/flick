@@ -12,16 +12,12 @@ import Testing
     }
 
     @Test func roundTripsThroughJSON() throws {
-        let original = AIConfig(provider: .claude,
+        let original = AIConfig(provider: .openai,
                                 baseURL: "https://api.deepseek.com",
                                 apiKey: "sk-test",
                                 model: "deepseek-chat")
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(AIConfig.self, from: data)
         #expect(decoded == original)
-    }
-
-    @Test func providerOpenAIAndClaudeAreDistinct() {
-        #expect(Provider.openai != Provider.claude)
     }
 }

@@ -32,24 +32,6 @@ import Testing
         #expect(result == "你好")
     }
 
-    @Test func translateClaudeSendsXAPIKeyHeaderAndParsesContent() async throws {
-        MockURLProtocol.jsonResponder = { request in
-            #expect(request.value(forHTTPHeaderField: "x-api-key") == "sk-ant")
-            #expect(request.value(forHTTPHeaderField: "anthropic-version") == "2023-06-01")
-            return (200, ["content": [["text": "你好"]]])
-        }
-        let session = URLSession(configuration: .mock())
-        var cfg = AIConfig.default
-        cfg.provider = .claude
-        cfg.baseURL = "https://api.anthropic.com"
-        cfg.apiKey = "sk-ant"
-        cfg.model = "claude-haiku-4-5"
-        let svc = OpenAICompatibleService(config: cfg, session: session)
-
-        let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "你好")
-    }
-
     @Test func translateMapsHTTP401ToTranslationError() async {
         MockURLProtocol.jsonResponder = { _ in (401, ["error": ["message": "bad key"]]) }
         let session = URLSession(configuration: .mock())

@@ -33,17 +33,16 @@ import Testing
 
     @Test func saveAndLoadRoundTrip() {
         var cfg = store.load()
-        cfg.provider = .claude
         cfg.baseURL = "https://example.com"
         cfg.apiKey = "secret-xyz"
-        cfg.model = "claude-haiku-4-5"
+        cfg.model = "gpt-4o-mini"
         store.save(cfg)
 
         let loaded = store.load()
-        #expect(loaded.provider == .claude)
+        #expect(loaded.provider == .openai)
         #expect(loaded.baseURL == "https://example.com")
         #expect(loaded.apiKey == "secret-xyz")
-        #expect(loaded.model == "claude-haiku-4-5")
+        #expect(loaded.model == "gpt-4o-mini")
     }
 
     @Test func persistedPlistContainsAllFields() throws {
