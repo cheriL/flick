@@ -1,26 +1,37 @@
 import SwiftUI
 import AppKit
 import ApplicationServices
+import Combine
 
 struct MenuBarContent: View {
     let store: ConfigStore
     let onQuit: () -> Void
 
     @State private var showingAISettings = false
+    /// Re-checked while the menu is visible. Updated via Combine from a
+    /// 1 Hz timer that we start in `.onAppear` and stop in `.onDisappear`,
+    /// so the timer only runs while the menu is actually open — no leak
+    /// when the menu is closed.
+    @State private var isTrusted = AXUIElement.isProcessTrusted
+    @State private var ticker: AnyCancellable?
 
     var body: some View {
-        // TimelineView re-evaluates the closure every second while the menu
-        // is visible, which makes `AXIsProcessTrusted()` re-check itself —
-        // no `@State` round-trip needed. The view is torn down when the menu
-        // closes, so there's no background cost.
-        TimelineView(.periodic(from: .now, by: 1.0)) { _ in
-            content
-        }
+        content
+            .onAppear {
+                isTrusted = AXUIElement.isProcessTrusted
+                ticker = Timer.publish(every: 1.0, on: .main, in: .common)
+                    .autoconnect()
+                    .sink { _ in
+                        let now = AXUIElement.isProcessTrusted
+                        if now != isTrusted { isTrusted = now }
+                    }
+            }
+            .onDisappear { ticker?.cancel(); ticker = nil }
     }
 
     @ViewBuilder
     private var content: some View {
-        if !AXUIElement.isProcessTrusted {
+        if !isTrusted {
             permissionWarning
             Divider()
         }
@@ -50,9 +61,7 @@ struct MenuBarContent: View {
                     PermissionGrant.triggerAXPrompt()
                 }
                 Button("重新检测") {
-                    // No-op: TimelineView already re-checks every second.
-                    // Kept as a discoverable affordance for users who'd
-                    // rather not wait up to a second.
+                    isTrusted = AXUIElement.isProcessTrusted
                 }
             }
         }
@@ -62,9 +71,6 @@ struct MenuBarContent: View {
 
 enum PermissionGrant {
     /// Triggers the system "Flick wants to control your computer" prompt.
-    /// Belt-and-suspenders: the prompt fires automatically on the very
-    /// first AX call, but on some macOS versions it does not appear if
-    /// the user previously dismissed it. This re-shows it.
     static func triggerAXPrompt() {
         let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(opts)
