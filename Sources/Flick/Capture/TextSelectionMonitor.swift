@@ -34,6 +34,11 @@ final class TextSelectionMonitor {
     private var flagsMonitor: Any?
     private var lastText: String?
     private var lastIsAI: Bool = false
+    /// Cursor position at the moment the current `lastText` was first
+    /// seen. Frozen across ⌘ toggles so the trigger button doesn't
+    /// jump when the user's hand moves the cursor between selection
+    /// and modifier change. Refreshed only when the text changes.
+    private var lastCursor: NSPoint = .zero
     /// Set when the user taps the trigger button (or a translation
     /// finishes for the current selection). While set, the monitor
     /// suppresses ALL notifications for that text — the user has
@@ -132,10 +137,20 @@ final class TextSelectionMonitor {
         // "AI" and "译" when the user toggles ⌘ while the selection
         // stays put.
         if trimmed == lastText && cmdHeld == lastIsAI { return }
+
+        // Capture the cursor only on the first poll for a given text.
+        // ⌘ toggles (same text, different isAI) reuse the original
+        // position so the button doesn't jump if the cursor drifted
+        // between selection and modifier change.
+        let cursor: NSPoint
+        if trimmed == lastText {
+            cursor = lastCursor
+        } else {
+            cursor = NSEvent.mouseLocation
+            lastCursor = cursor
+        }
         lastText = trimmed
         lastIsAI = cmdHeld
-
-        let mouse = NSEvent.mouseLocation
 
         NotificationCenter.default.post(
             name: .flickSelectionChanged,
@@ -143,7 +158,7 @@ final class TextSelectionMonitor {
             userInfo: [
                 "text": trimmed,
                 "isAI": cmdHeld,
-                "cursor": NSValue(point: mouse),
+                "cursor": NSValue(point: cursor),
             ]
         )
     }
