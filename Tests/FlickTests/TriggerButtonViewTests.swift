@@ -8,8 +8,8 @@ import Testing
         #expect(view.iconName == "character.bubble.fill")
     }
 
-    @Test func aiModeUsesSparkles() {
+    @Test func aiModeUsesEllipsisBubble() {
         let view = TriggerButtonView(isAI: true, onTap: {})
-        #expect(view.iconName == "sparkles")
+        #expect(view.iconName == "ellipsis.bubble.fill")
     }
 }

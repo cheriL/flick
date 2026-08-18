@@ -19,11 +19,12 @@ struct ResultWindowView: View {
     // so tests can assert icon selection and accent-bar visibility without
     // walking the rendered tree.
 
-    /// `true` if the loading branch renders the AI sparkle icon, `false` if
-    /// it falls back to `ProgressView`. Only meaningful for `.loading`.
+    /// AI loading branch renders an ellipsis-bubble icon (matches the
+    /// trigger button's AI glyph so both surfaces use the same SF Symbol
+    /// family). `nil` for normal mode, which falls back to `ProgressView`.
     var loadingIconName: String? {
         guard isAI else { return nil }
-        return "sparkles"
+        return "ellipsis.bubble.fill"
     }
 
     /// Label shown in the loading branch.
@@ -67,9 +68,9 @@ struct ResultWindowView: View {
         case .loading:
             HStack(spacing: 8) {
                 if isAI {
-                    Image(systemName: "sparkles")
+                    Image(systemName: "ellipsis.bubble.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(.primary)
                 } else {
                     ProgressView().controlSize(.small)
                 }

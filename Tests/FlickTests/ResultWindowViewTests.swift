@@ -3,9 +3,9 @@ import Testing
 
 @Suite @MainActor final class ResultWindowViewTests {
 
-    @Test func aiLoadingUsesSparklesIconAndLabel() {
+    @Test func aiLoadingUsesEllipsisBubbleIconAndLabel() {
         let view = ResultWindowView(original: "hi", state: .loading, isAI: true, onRetry: {})
-        #expect(view.loadingIconName == "sparkles")
+        #expect(view.loadingIconName == "ellipsis.bubble.fill")
         #expect(view.loadingLabel == "AI 翻译中…")
     }
 
