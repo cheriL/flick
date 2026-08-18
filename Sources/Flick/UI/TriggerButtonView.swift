@@ -16,16 +16,16 @@ struct TriggerButtonView: View {
             // shape itself. `contentShape` extends the hit area to the
             // whole frame even though the visible glyph is smaller.
             //
-            // Both modes share `.primary` tint, `.monochrome` rendering,
-            // and the same font size — the only difference between modes
-            // is the symbol shape itself. Earlier yellow/hierarchical
-            // styling broke visual consistency with the normal-mode
-            // bubble.
+            // Both modes share the same palette, size, and weight —
+            // they differ only in symbol shape.
             ZStack {
                 Image(systemName: isAI ? "ellipsis.bubble.fill" : "character.bubble.fill")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(Color.primary)
-                    .symbolRenderingMode(.monochrome)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(
+                        Color.white,
+                        Color(red: 0.45, green: 0.70, blue: 1.0)
+                    )
             }
             .frame(width: 28, height: 28)
             .contentShape(Rectangle())
