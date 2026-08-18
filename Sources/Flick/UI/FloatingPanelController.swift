@@ -41,15 +41,15 @@ final class FloatingPanelController {
         resultPanel.orderOut(nil)
     }
 
-    func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
-        let size = CGSize(width: 360, height: 120) // height grows with content via resizable mask
+    func showResult(original: String, state: ResultState, at cursor: CGPoint, isAI: Bool, onRetry: @escaping () -> Void) {
+        let size = CGSize(width: 360, height: 140) // height grows with content via resizable mask
         let screen = NSScreen.main?.frame ?? .zero
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
-        resultPanel.contentView = NSHostingView(
-            rootView: ResultWindowView(original: original, state: state, onRetry: onRetry)
-        )
+        let root = ResultWindowView(original: original, state: state, isAI: isAI, onRetry: onRetry)
+        let container = PanelContainerView(rootView: root)
+        resultPanel.contentView = container
         resultPanel.orderFrontRegardless()
         triggerPanel.orderOut(nil)
         installMonitors()
@@ -70,7 +70,13 @@ final class FloatingPanelController {
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        // The result panel draws its own shadow on the chrome view, so we
+        // only want a window-level shadow on the trigger panel.
+        if panel === resultPanel {
+            panel.hasShadow = false
+        } else {
+            panel.hasShadow = true
+        }
     }
 
     private func installMonitors() {
@@ -93,4 +99,37 @@ final class FloatingPanelController {
         escMonitor = nil
         outsideClickMonitor = nil
     }
+}
+
+/// Stacks a `PanelChromeView` (the material + rounded corner + shadow backing)
+/// under a SwiftUI `NSHostingView` that renders the actual `ResultWindowView`.
+/// Set as the content view of the result panel.
+private final class PanelContainerView: NSView {
+    let chrome: NSHostingView<PanelChromeView>
+    let host: NSHostingView<ResultWindowView>
+
+    init(rootView: ResultWindowView) {
+        self.chrome = NSHostingView(rootView: PanelChromeView())
+        self.host = NSHostingView(rootView: rootView)
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.masksToBounds = false
+        addSubview(chrome)
+        addSubview(host)
+        chrome.translatesAutoresizingMaskIntoConstraints = false
+        host.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            chrome.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chrome.trailingAnchor.constraint(equalTo: trailingAnchor),
+            chrome.topAnchor.constraint(equalTo: topAnchor),
+            chrome.bottomAnchor.constraint(equalTo: bottomAnchor),
+            host.leadingAnchor.constraint(equalTo: leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: trailingAnchor),
+            host.topAnchor.constraint(equalTo: topAnchor),
+            host.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
 }
