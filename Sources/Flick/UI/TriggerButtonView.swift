@@ -21,14 +21,15 @@ struct TriggerButtonView: View {
             // 28×28 frame keeps the click target generous.
             ZStack {
                 if let letter = monogram {
+                    // White bubble fill hides the internal "A" glyph that
+                    // SF Symbols renders inside `character.bubble.fill`,
+                    // and gives the black "F" monogram solid contrast.
                     Image(systemName: iconName)
                         .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                     Text(letter)
                         .font(.system(size: 11, weight: .bold, design: .rounded))
-                        // Inverse of .primary so the F stays legible on the
-                        // bubble in both light and dark mode.
-                        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                        .foregroundStyle(.black)
                 } else {
                     Image(systemName: iconName)
                         .font(.system(size: 18, weight: .medium))
