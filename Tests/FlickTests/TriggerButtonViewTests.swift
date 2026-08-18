@@ -3,13 +3,15 @@ import Testing
 
 @Suite @MainActor final class TriggerButtonViewTests {
 
-    @Test func normalModeUsesCharacterBubble() {
+    @Test func normalModeUsesFilledBubbleWithFMonogram() {
         let view = TriggerButtonView(isAI: false, onTap: {})
-        #expect(view.iconName == "character.bubble")
+        #expect(view.iconName == "character.bubble.fill")
+        #expect(view.monogram == "F")
     }
 
-    @Test func aiModeUsesSparkles() {
+    @Test func aiModeUsesSparklesWithoutMonogram() {
         let view = TriggerButtonView(isAI: true, onTap: {})
         #expect(view.iconName == "sparkles")
+        #expect(view.monogram == nil)
     }
 }

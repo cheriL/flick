@@ -69,7 +69,7 @@ struct ResultWindowView: View {
                 if isAI {
                     Image(systemName: "sparkles")
                         .font(.system(size: 14))
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(.yellow)
                 } else {
                     ProgressView().controlSize(.small)
                 }
