@@ -1,0 +1,39 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required for softprops/action-gh-release to upload assets
+
+jobs:
+  dmg:
+    name: Build DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app
+        run: ./scripts/build-app.sh
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build DMG
+        env:
+          # github.ref_name is the tag name (e.g. "v0.1.1"). Strip the
+          # leading "v" so the DMG filename matches our local convention
+          # of Flick-<version>.dmg.
+          VERSION: ${{ github.ref_name }}
+        run: ./scripts/build-dmg.sh
+
+      - name: Upload DMG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .build/Flick-*.dmg
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
