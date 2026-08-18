@@ -13,19 +13,15 @@ struct FlickApp: App {
                 onQuit: { NSApp.terminate(nil) }
             )
         } label: {
-            // Static bubble + monogram. We deliberately do NOT use
-            // TimelineView / Timer here — `MenuBarExtra` label views that
-            // constantly re-render have been observed to leak memory and
-            // (worse) vanish from the menu bar entirely on some macOS
-            // versions.
-            ZStack {
-                Image(systemName: "character.bubble.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white)
-                Text("F")
-                    .font(.system(size: 7, weight: .bold, design: .rounded))
-                    .foregroundStyle(.black)
-            }
+            // Plain `character.bubble.fill` glyph. We deliberately do NOT
+            // use TimelineView / Timer here — `MenuBarExtra` label views
+            // that constantly re-render have been observed to leak memory
+            // and (worse) vanish from the menu bar entirely on some macOS
+            // versions. The icon uses the system's primary tint so it stays
+            // legible against both light and dark menu bars.
+            Image(systemName: "character.bubble.fill")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
         }
     }
 }
