@@ -24,5 +24,10 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Flick, 2026</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>
