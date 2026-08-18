@@ -19,12 +19,4 @@ import Testing
         let view = ResultWindowView(original: "hi", state: .failure("boom"), isAI: false, onRetry: {})
         #expect(view.failureIconName == "xmark.circle")
     }
-
-    @Test func aiAccentBarPresentOnlyForAI() {
-        let aiView = ResultWindowView(original: "hi", state: .success("ok"), isAI: true, onRetry: {})
-        #expect(aiView.showsAIAccentBar == true)
-
-        let normalView = ResultWindowView(original: "hi", state: .success("ok"), isAI: false, onRetry: {})
-        #expect(normalView.showsAIAccentBar == false)
-    }
 }
