@@ -1,24 +1,34 @@
 # Flick
 
-极简 macOS 菜单栏翻译软件。选中文本 → 鼠标旁边出现翻译按钮 → 点击查看译文。
-按住 ⌘ 选词 → AI 翻译（OpenAI 兼容：OpenAI / Claude / DeepSeek）；不按 ⌘ → Apple Translation（本地、免费）。
+Minimal macOS menu-bar translator. Select text, a translate button appears next to the cursor, click to see the result.
 
-## 设计文档
+![license](https://img.shields.io/badge/license-GPL%20v3-blue.svg?style=flat-square)
+![platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg?style=flat-square)
+![release](https://img.shields.io/github/v/release/cheriL/flick.svg?style=flat-square&include_prereleases)
 
-见 [`docs/superpowers/specs/2026-08-12-flick-design.md`](docs/superpowers/specs/2026-08-12-flick-design.md)。
+[English](README.md) · [中文](README.zh-CN.md)
 
-## 构建
+## Features
+
+- select → Apple Translation (on-device, free)
+- ⌘ + select → AI translation (OpenAI)
+
+## Requirements
+
+- macOS 14+
+- Accessibility permission (System Settings → Privacy & Security → Accessibility)
+
+## Quick Start
 
 ```bash
-swift build -c release
-scripts/build-app.sh
+git clone https://github.com/cheriL/flick.git
+cd flick
+./scripts/build-app.sh
 open .build/Flick.app
 ```
 
-需要 macOS 14+ 和辅助功能权限（系统设置 → 隐私与安全 → 辅助功能）。
+On first launch, grant Accessibility. Then select any text in any app — the floating button appears next to the cursor. Hold ⌘ while selecting for AI translation. Configure the API key in Settings → AI.
 
-## 测试
+## License
 
-```bash
-swift test
-```
+[GPL-3.0](LICENSE)
