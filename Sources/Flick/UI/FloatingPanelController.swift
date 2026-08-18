@@ -41,14 +41,14 @@ final class FloatingPanelController {
         resultPanel.orderOut(nil)
     }
 
-    func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
-        let size = CGSize(width: 360, height: 120) // height grows with content via resizable mask
+    func showResult(original: String, state: ResultState, at cursor: CGPoint, isAI: Bool = false, onRetry: @escaping () -> Void) {
+        let size = CGSize(width: 360, height: 140) // height grows with content via resizable mask
         let screen = NSScreen.main?.frame ?? .zero
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         resultPanel.contentView = NSHostingView(
-            rootView: ResultWindowView(original: original, state: state, onRetry: onRetry)
+            rootView: ResultWindowView(original: original, state: state, isAI: isAI, onRetry: onRetry)
         )
         resultPanel.orderFrontRegardless()
         triggerPanel.orderOut(nil)
