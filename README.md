@@ -18,17 +18,6 @@ Minimal macOS menu-bar translator. Select text, a translate button appears next 
 - macOS 14+
 - Accessibility permission (System Settings → Privacy & Security → Accessibility)
 
-## Quick Start
-
-```bash
-git clone https://github.com/cheriL/flick.git
-cd flick
-./scripts/build-app.sh
-open .build/Flick.app
-```
-
-On first launch, grant Accessibility. Then select any text in any app — the floating button appears next to the cursor. Hold ⌘ while selecting for AI translation. Configure the API key in Settings → AI.
-
 ## License
 
 [GPL-3.0](LICENSE)
