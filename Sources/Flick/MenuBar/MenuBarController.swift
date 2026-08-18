@@ -100,7 +100,7 @@ final class MenuBarController {
         currentTask = Task { [weak self] in
             guard let self else { return }
             await MainActor.run {
-                self.panel.showResult(original: text, state: .loading, at: cursor, onRetry: { [weak self] in
+                self.panel.showResult(original: text, state: .loading, at: cursor, isAI: isAI, onRetry: { [weak self] in
                     self?.runTranslation(text: text, at: cursor, isAI: isAI)
                 })
             }
@@ -114,7 +114,7 @@ final class MenuBarController {
                 let translated = try await service.translate(text, to: target)
                 if Task.isCancelled { return }
                 await MainActor.run {
-                    self.panel.showResult(original: text, state: .success(translated), at: cursor, onRetry: { [weak self] in
+                    self.panel.showResult(original: text, state: .success(translated), at: cursor, isAI: isAI, onRetry: { [weak self] in
                         self?.runTranslation(text: text, at: cursor, isAI: isAI)
                     })
                 }
@@ -122,7 +122,7 @@ final class MenuBarController {
                 if Task.isCancelled { return }
                 let msg = (error as? TranslationError)?.errorDescription ?? error.localizedDescription
                 await MainActor.run {
-                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, onRetry: { [weak self] in
+                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, isAI: isAI, onRetry: { [weak self] in
                         self?.runTranslation(text: text, at: cursor, isAI: isAI)
                     })
                 }
