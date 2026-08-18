@@ -13,7 +13,9 @@ struct FlickApp: App {
                 onQuit: { NSApp.terminate(nil) }
             )
         } label: {
-            // Plain `character.bubble.fill` glyph. We deliberately do NOT
+            // Plain `character.bubble.fill` glyph. Matches the trigger
+            // button's normal-mode icon so the menu bar and the trigger
+            // panel share one recognizable shape. We deliberately do NOT
             // use TimelineView / Timer here — `MenuBarExtra` label views
             // that constantly re-render have been observed to leak memory
             // and (worse) vanish from the menu bar entirely on some macOS
