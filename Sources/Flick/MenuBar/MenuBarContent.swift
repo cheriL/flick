@@ -25,11 +25,16 @@ struct MenuBarContent: View {
         }
         .padding(8)
         .frame(width: 210)
-        // `.regularMaterial` gives the panel a frosted-glass look like
-        // Tailscale's menu — the desktop bleeds through subtly, which
-        // softens the contrast against the user's other windows and
-        // makes the hairline dividers below readable on any wallpaper.
-        .background(.regularMaterial)
+        // Frosted-glass background. SwiftUI's built-in `.ultraThinMaterial`
+        // would be simpler, but `MenuBarExtra`'s hosting panel is opaque
+        // by default — the material samples the panel's own white
+        // background and produces a flat tinted look with no real
+        // wallpaper bleed-through. `NSVisualEffectView` with
+        // `blendingMode = .behindWindow` blurs whatever is drawn behind
+        // the window, which (combined with the window becoming
+        // effectively non-opaque for the affected region) gives us the
+        // Tailscale / NSMenu look — wallpaper visibly bleeds through.
+        .background(VisualEffectBackground())
         .onAppear {
             isTrusted = AXUIElement.isProcessTrusted
             selectionEnabled = store.isSelectionEnabled
@@ -122,7 +127,7 @@ struct MenuBarContent: View {
             .fill(Color.primary.opacity(0.10))
             .frame(height: 1)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
             .padding(.horizontal, 4)
     }
 
@@ -134,18 +139,17 @@ struct MenuBarContent: View {
 }
 
 /// Plain-button style for the action rows in the popover. Matches the
-/// native NSMenu item look: full-width hit area, ~20pt row height
-/// (reduced 1/4 from the original 26pt), and a subtle press highlight.
-/// The fixed height keeps the three action rows visually even — without
-/// it, the divider + VStack spacing produces uneven gaps depending on
-/// label length.
+/// native NSMenu item look: full-width hit area, ~26pt row height,
+/// and a subtle press highlight. The fixed height keeps the three
+/// action rows visually even — without it, the divider + VStack
+/// spacing produces uneven gaps depending on label length.
 struct MenuActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12))
+            .font(.system(size: 13))
             .foregroundStyle(.primary)
             .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .fill(configuration.isPressed ? Color.accentColor.opacity(0.20) : Color.clear)
@@ -205,6 +209,33 @@ enum ChromeLaunch {
     }
 }
 
+/// `NSViewRepresentable` wrapper around `NSVisualEffectView` with
+/// `blendingMode = .behindWindow`. This is the only path that gets a
+/// real frosted-glass look — including wallpaper bleed-through — out
+/// of `MenuBarExtra`'s panel, because `.behindWindow` lets the visual
+/// effect sample pixels from behind the window instead of from inside
+/// the (opaque) hosting view.
+///
+/// We pick `.popover` material because that's what `NSPopover` uses for
+/// its content area; it gives a neutral frosted backdrop that suits
+/// the popover-style menu panel. `.followsWindowActiveState` keeps the
+/// effect dimmed while the panel isn't key, matching how NSMenu and
+/// NSPopover behave when they're not focused.
+struct VisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .popover
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .popover
+        nsView.blendingMode = .behindWindow
+    }
+}
+
 /// Hosts the AI settings SwiftUI view in a regular `NSWindow`.
 ///
 /// We can't use a SwiftUI `.popover` from inside `MenuBarExtra`'s default
@@ -233,12 +264,13 @@ enum AISettingsWindow {
         w.title = "Flick 设置"
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.isReleasedWhenClosed = false
-        // Auto-size to the SwiftUI view's intrinsic size. AISettingsView
-        // declares `frame(width: 440)` plus the form's section padding;
-        // this just nudges the initial content size to a reasonable
-        // default. macOS will then grow/shrink the window as the view
-        // reports a different intrinsic size.
-        w.setContentSize(NSSize(width: 440, height: 360))
+        // Initial content size. AISettingsView declares `frame(width: 400)`
+        // and lets the height fall out of the SwiftUI layout; macOS then
+        // sizes the window to that intrinsic height. The number below is
+        // a hint for the first paint before auto-sizing kicks in, so we
+        // match the new flat layout (~310pt) instead of the old grouped
+        // form (~360pt).
+        w.setContentSize(NSSize(width: 400, height: 320))
         w.center()
         // If the user closes via the red traffic-light button, drop the
         // cached reference so the next menu click re-creates a fresh one.

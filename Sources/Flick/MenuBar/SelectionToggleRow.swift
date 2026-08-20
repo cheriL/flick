@@ -28,17 +28,17 @@ struct SelectionToggleRow: View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Flick")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                     Text(isOn ? "已启用" : "已停用")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
                 TogglePill(isOn: isOn)
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -71,13 +71,12 @@ struct SelectionToggleButtonStyle: ButtonStyle {
 
 /// Standalone pill switch used by `SelectionToggleRow`. Green pill on,
 /// gray pill off, white knob slides between the two ends. Sized to
-/// match the visual weight of the 12pt title beside it — the 38pt
-/// version was proportionally too big once the title shrank.
+/// match the visual weight of the 13pt title beside it.
 struct TogglePill: View {
     let isOn: Bool
 
-    private let width: CGFloat = 28
-    private let height: CGFloat = 16
+    private let width: CGFloat = 32
+    private let height: CGFloat = 18
     private let knobPadding: CGFloat = 2
 
     var body: some View {
