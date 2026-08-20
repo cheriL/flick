@@ -56,7 +56,7 @@ Sources/Flick/
     TranslationService.swift            # dispatch + coexistence
     HiddenTranslationHost.swift         # hidden Translate.app host (Apple)
   Settings/                             # AISettingsView, AutoStart
-  MenuBar/                              # MenuBarController, MenuBarContent
+  MenuBar/                              # MenuBarController, MenuBarContent, SelectionToggleRow
   Config/ConfigStore.swift              # UserDefaults-backed config
   Models/AIConfig.swift                 # API key, base URL, model name
 Tests/FlickTests/                       # swift-testing (NOT XCTest)
