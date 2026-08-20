@@ -25,5 +25,6 @@ struct FlickApp: App {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.primary)
         }
+        .menuBarExtraStyle(.window)
     }
 }

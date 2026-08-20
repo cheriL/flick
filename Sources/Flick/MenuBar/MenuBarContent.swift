@@ -13,38 +13,75 @@ struct MenuBarContent: View {
     /// when the menu is closed.
     @State private var isTrusted = AXUIElement.isProcessTrusted
     @State private var ticker: AnyCancellable?
+    /// Live mirror of the global "selection enabled" toggle. Initialised
+    /// from `ConfigStore` in `.onAppear` and updated when the user flips
+    /// the menu-bar switch. Persisted via `store.setSelectionEnabled`
+    /// which also posts the notification the controller listens for.
+    @State private var selectionEnabled: Bool = true
 
     var body: some View {
-        content
-            .onAppear {
-                isTrusted = AXUIElement.isProcessTrusted
-                ticker = Timer.publish(every: 1.0, on: .main, in: .common)
-                    .autoconnect()
-                    .sink { _ in
-                        let now = AXUIElement.isProcessTrusted
-                        if now != isTrusted { isTrusted = now }
-                    }
-            }
-            .onDisappear { ticker?.cancel(); ticker = nil }
+        VStack(alignment: .leading, spacing: 0) {
+            content
+        }
+        .padding(8)
+        .frame(width: 210)
+        // `.regularMaterial` gives the panel a frosted-glass look like
+        // Tailscale's menu — the desktop bleeds through subtly, which
+        // softens the contrast against the user's other windows and
+        // makes the hairline dividers below readable on any wallpaper.
+        .background(.regularMaterial)
+        .onAppear {
+            isTrusted = AXUIElement.isProcessTrusted
+            selectionEnabled = store.isSelectionEnabled
+            ticker = Timer.publish(every: 1.0, on: .main, in: .common)
+                .autoconnect()
+                .sink { _ in
+                    let now = AXUIElement.isProcessTrusted
+                    if now != isTrusted { isTrusted = now }
+                }
+        }
+        .onDisappear { ticker?.cancel(); ticker = nil }
     }
 
     @ViewBuilder
     private var content: some View {
         if !isTrusted {
             permissionWarning
-            Divider()
+            thinDivider
         }
 
-        Text("⌘  按住 ⌘ 选词 → AI 翻译")
-        Divider()
-        Button("启动 Chrome (辅助模式)") {
+        // The single Tailscale-style row that doubles as the hint and
+        // the kill-switch. The previous static `⌘ 按住 ⌘ 选词 → AI 翻译`
+        // label was removed by user request — the subtitle below the
+        // title now carries the same hint, and the toggle on the right
+        // is the action.
+        SelectionToggleRow(
+            isOn: Binding(
+                get: { selectionEnabled },
+                set: { newValue in
+                    selectionEnabled = newValue
+                    store.setSelectionEnabled(newValue)
+                }
+            ),
+            onChange: { _ in }
+        )
+
+        thinDivider
+
+        actionButton("启动 Chrome (辅助模式)") {
             ChromeLaunch.launchWithAccessibilityFlag()
         }
-        Button("设置…") {
+        actionButton("设置…") {
             AISettingsWindow.show(store: store)
         }
-        Divider()
-        Button("退出", action: onQuit)
+
+        // Original Flick menu (and Tailscale) put a separator between
+        // "Settings…" and "Quit" to mark Quit as a terminal action that
+        // shouldn't be visually grouped with the configuration options
+        // above. Restored here after the refactor dropped it.
+        thinDivider
+
+        actionButton("退出", action: onQuit)
             .keyboardShortcut("q")
     }
 
@@ -57,19 +94,63 @@ struct MenuBarContent: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button("打开系统设置") {
+                Button("系统设置") {
                     PermissionGrant.openSystemSettingsAccessibility()
                     PermissionGrant.triggerAXPrompt()
                 }
-                Button("重启 Flick") {
+                Button("重启") {
                     PermissionGrant.relaunchSelf()
                 }
-                Button("重新检测") {
+                Button("检测") {
                     isTrusted = AXUIElement.isProcessTrusted
                 }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// Hairline separator between sections. `Color.primary.opacity(0.10)`
+    /// gives a reliable contrast against any material — the
+    /// `Color.secondary` variant we tried before collapsed into the
+    /// panel background on the light system appearance and vanished
+    /// entirely. The horizontal insets match the action row's
+    /// horizontal padding so the line breaks cleanly under the label
+    /// column rather than running edge-to-edge. Vertical padding
+    /// matches the breathing room in the Tailscale reference.
+    private var thinDivider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.10))
+            .frame(height: 1)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 4)
+    }
+
+    private func actionButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(MenuActionButtonStyle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Plain-button style for the action rows in the popover. Matches the
+/// native NSMenu item look: full-width hit area, ~20pt row height
+/// (reduced 1/4 from the original 26pt), and a subtle press highlight.
+/// The fixed height keeps the three action rows visually even — without
+/// it, the divider + VStack spacing produces uneven gaps depending on
+/// label length.
+struct MenuActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(configuration.isPressed ? Color.accentColor.opacity(0.20) : Color.clear)
+            )
+            .contentShape(Rectangle())
     }
 }
 

@@ -4,6 +4,7 @@ import Security
 final class ConfigStore {
     private let defaults: UserDefaults
     private let defaultsKey = "Flick.AIConfig"
+    private let selectionEnabledKey = "Flick.selectionEnabled"
     private let keychainService: String
     private let keychainAccount = "openai-api-key"
 
@@ -30,6 +31,22 @@ final class ConfigStore {
         if let data = try? JSONEncoder().encode(cfg) {
             defaults.set(data, forKey: defaultsKey)
         }
+    }
+
+    // MARK: - Selection-enabled toggle
+
+    /// Global "allow selection-to-translate" switch. Default ON. The
+    /// monitor reads this each tick (and on change) so the user can
+    /// kill the feature without quitting Flick.
+    var isSelectionEnabled: Bool {
+        // Object lookup (not `bool(forKey:)`) so an absent key returns
+        // the default rather than being coerced to `false`.
+        (defaults.object(forKey: selectionEnabledKey) as? Bool) ?? true
+    }
+
+    func setSelectionEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: selectionEnabledKey)
+        NotificationCenter.default.post(name: .flickSelectionEnabledChanged, object: nil, userInfo: ["enabled": enabled])
     }
 
     // MARK: - Keychain → defaults migration

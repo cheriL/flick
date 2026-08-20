@@ -8,6 +8,7 @@ final class MenuBarController {
     private let monitor: TextSelectionMonitor
     private var subscription: NSObjectProtocol?
     private var clearedSubscription: NSObjectProtocol?
+    private var enabledSubscription: NSObjectProtocol?
     private var currentTask: Task<Void, Never>?
     private var lastText: String?
 
@@ -27,6 +28,9 @@ final class MenuBarController {
         self.store = store
         self.panel = panel
         self.monitor = TextSelectionMonitor(provider: AXSelectionProvider())
+        // Seed the monitor with the persisted toggle value so the
+        // default-ON behaviour matches what's already in UserDefaults.
+        self.monitor.isEnabled = store.isSelectionEnabled
         mountHiddenHost()
     }
 
@@ -42,14 +46,25 @@ final class MenuBarController {
         ) { [weak self] _ in
             self?.panel.dismiss()
         }
+        // Live-update the monitor when the user flips the menu-bar
+        // toggle. The menu UI persists the value to UserDefaults and
+        // posts this notification; we just forward it.
+        enabledSubscription = NotificationCenter.default.addObserver(
+            forName: .flickSelectionEnabledChanged, object: nil, queue: .main
+        ) { [weak self] note in
+            let enabled = (note.userInfo?["enabled"] as? Bool) ?? self?.store.isSelectionEnabled ?? true
+            self?.monitor.isEnabled = enabled
+        }
     }
 
     func stop() {
         monitor.stop()
         if let s = subscription { NotificationCenter.default.removeObserver(s) }
         if let s = clearedSubscription { NotificationCenter.default.removeObserver(s) }
+        if let s = enabledSubscription { NotificationCenter.default.removeObserver(s) }
         subscription = nil
         clearedSubscription = nil
+        enabledSubscription = nil
         currentTask?.cancel()
         panel.dismiss()
     }

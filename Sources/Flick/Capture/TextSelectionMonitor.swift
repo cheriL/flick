@@ -25,6 +25,10 @@ extension Notification.Name {
     /// controller uses this to dismiss the lingering trigger button so it
     /// doesn't stay stuck on the screen at an old position.
     static let flickSelectionCleared = Notification.Name("Flick.selectionCleared")
+    /// Posted when the user flips the global "selection enabled" switch in
+    /// the menu bar. The controller listens for this and forwards the new
+    /// value to the monitor so polling stops/starts immediately.
+    static let flickSelectionEnabledChanged = Notification.Name("Flick.selectionEnabledChanged")
 }
 
 final class TextSelectionMonitor {
@@ -48,6 +52,12 @@ final class TextSelectionMonitor {
     private var consumedText: String?
     private var lastFrontmostPID: pid_t = 0
     private var tickCount: Int = 0
+    /// Global kill-switch driven by the menu-bar toggle. When `false`
+    /// the monitor still ticks (so the `flagsMonitor` keeps responding
+    /// to ⌘ toggles), but `poll` short-circuits before touching AX or
+    /// posting notifications, and any previously-seen selection is
+    /// forgotten.
+    var isEnabled: Bool = true
 
     init(provider: SelectionProvider, interval: TimeInterval = 0.3) {
         self.provider = provider
@@ -88,6 +98,18 @@ final class TextSelectionMonitor {
 
     private func poll() {
         tickCount += 1
+        // Global toggle off → no AX work, no notifications. If we had a
+        // lingering selection, treat it as cleared so a stale trigger
+        // button isn't left on screen.
+        guard isEnabled else {
+            if lastText != nil {
+                lastText = nil
+                lastIsAI = false
+                consumedText = nil
+                NotificationCenter.default.post(name: .flickSelectionCleared, object: nil)
+            }
+            return
+        }
         let frontmost = NSWorkspace.shared.frontmostApplication
         let frontName = frontmost?.localizedName ?? "?"
         let frontPID = frontmost?.processIdentifier ?? 0
