@@ -12,6 +12,16 @@ final class FloatingPanelController {
         styleMask: [.borderless, .nonactivatingPanel, .resizable],
         backing: .buffered, defer: false
     )
+    /// Logical "is this panel the one currently displayed" flags, set
+    /// when `showTrigger` / `showResult` runs and cleared in `dismiss`.
+    /// We use these rather than `panel.isVisible` because `isVisible`
+    /// relies on AppKit's notion of "on screen" — which is unreliable
+    /// in headless test environments and after `orderFrontRegardless`
+    /// without a real display attached. The predicate for click-outside
+    /// dismissal is about the *logical* display state, not the
+    /// graphical one.
+    private var triggerActive = false
+    private var resultActive = false
     private var escMonitor: Any?
     private var outsideClickMonitor: Any?
 
@@ -20,6 +30,12 @@ final class FloatingPanelController {
         configure(resultPanel)
         resultPanel.isReleasedWhenClosed = false
         triggerPanel.isReleasedWhenClosed = false
+        // Install both monitors at init so they're active whenever ANY
+        // panel is showing — not just the result panel. Previously the
+        // outside-click monitor was only registered inside `showResult`,
+        // which meant the trigger button stayed on screen even when the
+        // user clicked elsewhere.
+        installMonitors()
     }
 
     deinit {
@@ -39,6 +55,8 @@ final class FloatingPanelController {
         )
         triggerPanel.orderFrontRegardless()
         resultPanel.orderOut(nil)
+        resultActive = false
+        triggerActive = true
     }
 
     func showResult(original: String, state: ResultState, at cursor: CGPoint, isAI: Bool, onRetry: @escaping () -> Void) {
@@ -52,14 +70,29 @@ final class FloatingPanelController {
         resultPanel.contentView = container
         resultPanel.orderFrontRegardless()
         triggerPanel.orderOut(nil)
-        installMonitors()
+        triggerActive = false
+        resultActive = true
     }
 
     func dismiss() {
         triggerPanel.orderOut(nil)
         resultPanel.orderOut(nil)
+        triggerActive = false
+        resultActive = false
         stopMonitors()
     }
+
+    // MARK: - Test hooks
+
+    /// Current frame of the trigger panel (in screen coordinates, Cocoa
+    /// convention). Exposed so tests can compute "inside" / "outside"
+    /// points without depending on the headless NSScreen geometry that
+    /// `PanelPositioning` ends up clamping to in `swift test`.
+    var triggerFrameForTesting: CGRect { triggerPanel.frame }
+
+    /// Current frame of the result panel. Same rationale as
+    /// `triggerFrameForTesting`.
+    var resultFrameForTesting: CGRect { resultPanel.frame }
 
     // MARK: - Private
 
@@ -99,9 +132,37 @@ final class FloatingPanelController {
             }
             return event
         }
+        // Global mouse-down watcher. We can't use NSPanel's built-in
+        // `didResignKey` for this because the panels are
+        // `.nonactivatingPanel` — they don't take key, so they don't
+        // resign on outside click. We register a global monitor instead
+        // (which requires Accessibility permission, which the app
+        // already has for selection polling).
+        //
+        // The handler is **dismiss-on-outside only**: a click that lands
+        // inside one of our panels must pass through to the panel's view
+        // hierarchy so the user can still tap the trigger button, click
+        // the result panel's retry button, scroll the translation, etc.
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.dismiss()
+            guard let self else { return }
+            let click = NSEvent.mouseLocation
+            if self.isOutsideClick(at: click) {
+                self.dismiss()
+            }
         }
+    }
+
+    /// True if a click at `screenPoint` is "outside" every currently
+    /// visible Flick panel — i.e. the click should dismiss the popup.
+    /// False if the click landed inside a panel, in which case it
+    /// should pass through to that panel's view.
+    ///
+    /// Exposed (rather than inlined in the monitor closure) so tests can
+    /// exercise the predicate directly with synthetic panel states.
+    func isOutsideClick(at screenPoint: CGPoint) -> Bool {
+        if triggerActive, triggerPanel.frame.contains(screenPoint) { return false }
+        if resultActive, resultPanel.frame.contains(screenPoint) { return false }
+        return true
     }
 
     private func stopMonitors() {

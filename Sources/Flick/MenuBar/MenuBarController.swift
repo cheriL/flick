@@ -112,14 +112,23 @@ final class MenuBarController {
 
     private func runTranslation(text: String, at cursor: CGPoint, isAI: Bool) {
         currentTask?.cancel()
+        // Show the loading state synchronously, in the same runloop tick
+        // as the click that triggered it. This is the call that hides the
+        // trigger panel (via `triggerPanel.orderOut(nil)` inside
+        // `showResult`). If we deferred this into the Task, the trigger
+        // would still be on screen for a beat — long enough for the
+        // global mouse-down monitor to pick up a follow-up click from
+        // the user and dismiss the whole popup before the result ever
+        // appeared.
+        //
+        // The subsequent `.success` / `.failure` updates still go through
+        // the Task because they originate from async translation work
+        // that may complete on a non-main actor.
+        panel.showResult(original: text, state: .loading, at: cursor, isAI: isAI, onRetry: { [weak self] in
+            self?.runTranslation(text: text, at: cursor, isAI: isAI)
+        })
         currentTask = Task { [weak self] in
             guard let self else { return }
-            await MainActor.run {
-                self.panel.showResult(original: text, state: .loading, at: cursor, isAI: isAI, onRetry: { [weak self] in
-                    self?.runTranslation(text: text, at: cursor, isAI: isAI)
-                })
-            }
-
             let target = Locale.Language(identifier: Locale.preferredLanguages.first ?? "en")
             let service: TranslationService = isAI
                 ? OpenAICompatibleService(config: store.load())
