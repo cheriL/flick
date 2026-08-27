@@ -30,7 +30,7 @@ final class FloatingPanelController {
 
     func showTrigger(at cursor: CGPoint, text: String, isAI: Bool, onTap: @escaping () -> Void) {
         let size = CGSize(width: 28, height: 28)
-        let screen = NSScreen.main?.frame ?? .zero
+        let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         triggerPanel.setFrame(NSRect(origin: origin, size: size), display: true)
@@ -43,7 +43,7 @@ final class FloatingPanelController {
 
     func showResult(original: String, state: ResultState, at cursor: CGPoint, isAI: Bool, onRetry: @escaping () -> Void) {
         let size = CGSize(width: 360, height: 140) // height grows with content via resizable mask
-        let screen = NSScreen.main?.frame ?? .zero
+        let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
@@ -62,6 +62,17 @@ final class FloatingPanelController {
     }
 
     // MARK: - Private
+
+    /// Frame of the display the panel should be placed on. Resolved from the
+    /// cursor rather than `NSScreen.main` — see `PanelPositioning.screenFrame`
+    /// for why the latter is wrong for a menu-bar accessory app.
+    private func screenFrame(near cursor: CGPoint) -> CGRect {
+        PanelPositioning.screenFrame(
+            for: cursor,
+            in: NSScreen.screens.map(\.frame),
+            fallback: NSScreen.main?.frame ?? .zero
+        )
+    }
 
     private func configure(_ panel: NSPanel) {
         panel.isFloatingPanel = true
