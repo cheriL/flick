@@ -45,11 +45,28 @@ enum Provider: String, Codable, CaseIterable, Equatable {
                   let content = message["content"] as? String else {
                 throw TranslationError.decoding("missing choices[0].message.content")
             }
-            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleaned = Self.stripThinkBlocks(content)
+            return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch let e as TranslationError {
             throw e
         } catch {
             throw TranslationError.decoding(error.localizedDescription)
         }
+    }
+
+    /// Strip `<think>...</think>` blocks (and any unclosed `<think>` opener) from
+    /// reasoning-model output so the user only sees the final translation.
+    /// Models like DeepSeek-R1 and QwQ emit a `<think>` reasoning prelude that
+    /// is not part of the answer.
+    static func stripThinkBlocks(_ text: String) -> String {
+        // Match either a balanced `<think>...</think>` (lazy so we don't span
+        // multiple blocks) or an unclosed opener that runs to end of string
+        // (response truncated by max_tokens, etc.).
+        let pattern = #"<think>[\s\S]*?(?:</think>|$)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return text
+        }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }
 }

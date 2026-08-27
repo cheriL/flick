@@ -66,6 +66,73 @@ import Testing
             Issue.record("wrong error: \(error)")
         }
     }
+
+    // MARK: - <think> stripping
+
+    @Test func translateStripsThinkBlockBeforeTranslation() async throws {
+        // Reasoning-model output: `<think>...</think>` prelude followed by the
+        // actual translation. The user should see the translation only.
+        let raw = """
+        <think>The user wants me to translate the given English text into Chinese. I should only output the translation without any explanation or quotes.</think>
+        高吞吐量部署：在低活动时段运行日志存储迁移。
+        """
+        MockURLProtocol.jsonResponder = { _ in
+            (200, ["choices": [["message": ["content": raw]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+        #expect(result == "高吞吐量部署：在低活动时段运行日志存储迁移。")
+    }
+
+    @Test func translateStripsMultilineThinkBlock() async throws {
+        let raw = "<think>The user wants\nme to translate\nmulti-line reasoning.\n</think>\n你好世界"
+        MockURLProtocol.jsonResponder = { _ in
+            (200, ["choices": [["message": ["content": raw]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        let result = try await svc.translate("hello world", to: Locale.Language(identifier: "zh-Hans"))
+        #expect(result == "你好世界")
+    }
+
+    @Test func translateLeavesContentWithoutThinkBlockUntouched() async throws {
+        // Sanity check: no think block → no accidental mutation.
+        MockURLProtocol.jsonResponder = { _ in
+            (200, ["choices": [["message": ["content": "你好"]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+        #expect(result == "你好")
+    }
+
+    @Test func translateStripsUnclosedThinkBlock() async throws {
+        // Response truncated by max_tokens — `<think>` opener has no closing tag.
+        // There's no reliable way to tell where reasoning ends and the answer
+        // begins, so we treat everything from `<think>` to EOF as reasoning.
+        // Users get an empty result instead of leaked reasoning noise.
+        let raw = "<think>I need to translate this text.\n你好世界"
+        MockURLProtocol.jsonResponder = { _ in
+            (200, ["choices": [["message": ["content": raw]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        let result = try await svc.translate("hello world", to: Locale.Language(identifier: "zh-Hans"))
+        #expect(result == "")
+    }
 }
 
 // MARK: - MockURLProtocol + URLSession factory
