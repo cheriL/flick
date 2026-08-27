@@ -133,6 +133,73 @@ import Testing
         let result = try await svc.translate("hello world", to: Locale.Language(identifier: "zh-Hans"))
         #expect(result == "")
     }
+
+    // MARK: - thinking suppression params
+
+    @Test func requestBodyIncludesThinkingSuppressionByDefault() async throws {
+        // disableThinking defaults to true → request body must carry both the
+        // OpenAI-style and DeepSeek-style knobs so reasoning-capable models
+        // skip their `<think>` prelude.
+        var captured: [String: Any]?
+        MockURLProtocol.jsonResponder = { request in
+            captured = Self.jsonBody(of: request)
+            return (200, ["choices": [["message": ["content": "你好"]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        _ = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+        let body = try #require(captured)
+        #expect(body["reasoning_effort"] as? String == "minimal")
+        let thinking = try #require(body["thinking"] as? [String: Any])
+        #expect(thinking["type"] as? String == "disabled")
+    }
+
+    @Test func requestBodyOmitsThinkingSuppressionWhenDisabled() async throws {
+        // When disableThinking is false, the body must NOT carry the
+        // suppression fields — escape hatch for providers that reject unknown
+        // params (e.g. some self-hosted gateways).
+        var captured: [String: Any]?
+        MockURLProtocol.jsonResponder = { request in
+            captured = Self.jsonBody(of: request)
+            return (200, ["choices": [["message": ["content": "你好"]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        cfg.disableThinking = false
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        _ = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+        let body = try #require(captured)
+        #expect(body["reasoning_effort"] == nil)
+        #expect(body["thinking"] == nil)
+    }
+
+    /// URLSession often moves the body out of `httpBody` and into
+    /// `httpBodyStream` before handing the request to URLProtocol, so reading
+    /// `httpBody` directly returns nil. Drain the stream to recover the bytes.
+    private static func jsonBody(of request: URLRequest) -> [String: Any]? {
+        var data = request.httpBody
+        if data == nil, let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var collected = Data()
+            let bufSize = 4096
+            let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufSize)
+            defer { buffer.deallocate() }
+            while stream.hasBytesAvailable {
+                let read = stream.read(buffer, maxLength: bufSize)
+                if read <= 0 { break }
+                collected.append(buffer, count: read)
+            }
+            data = collected
+        }
+        guard let data else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
 }
 
 // MARK: - MockURLProtocol + URLSession factory

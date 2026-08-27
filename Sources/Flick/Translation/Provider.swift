@@ -23,13 +23,21 @@ enum Provider: String, Codable, CaseIterable, Equatable {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": config.model,
             "messages": [
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.2,
         ]
+        // Suppress chain-of-thought on reasoning-capable providers. Both fields
+        // are silently ignored by non-reasoning models (gpt-4o-mini, deepseek-chat,
+        // qwen-plus, …) but actively disable the `<think>` prelude on
+        // reasoning models (OpenAI o-series, DeepSeek-V3.1).
+        if config.disableThinking {
+            body["reasoning_effort"] = "minimal"
+            body["thinking"] = ["type": "disabled"]
+        }
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         return req
     }
