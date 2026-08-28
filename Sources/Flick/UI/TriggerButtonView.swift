@@ -17,15 +17,23 @@ struct TriggerButtonView: View {
 
     var body: some View {
         Button(action: onTap) {
-            // 28×28 frame, no extra background/border/shadow outside the
-            // shape itself. `contentShape` extends the hit area to the
-            // whole frame even though the visible glyph is smaller.
+            // 28×28 frame, no extra background/border outside the
+            // shape itself. `contentShape` extends the hit area to
+            // the whole frame even though the visible glyph is
+            // smaller.
+            //
+            // The drop shadow sits *under* the icon (offset down by
+            // 1pt) and is intentionally subtle. The window-level
+            // NSWindow shadow is disabled in `FloatingPanelController`
+            // because its hard dark edge around the panel frame read
+            // as a black border — this SwiftUI shadow gives the same
+            // depth cue without the harsh outline.
             //
             // Both modes use the full-colour .icns (the popup has its
-            // own white background, so we don't apply template tinting
+            // own background, so we don't apply template tinting
             // like the menu-bar icon does). The fallback SF Symbol
-            // matches the pre-refactor look for environments without a
-            // built bundle (e.g. `swift test`).
+            // matches the pre-refactor look for environments without
+            // a built bundle (e.g. `swift test`).
             ZStack {
                 if let path = Bundle.main.path(forResource: iconResourceName, ofType: "icns"),
                    let image = NSImage(contentsOfFile: path) {
@@ -43,6 +51,7 @@ struct TriggerButtonView: View {
                 }
             }
             .frame(width: 28, height: 28)
+            .shadow(color: Color.black.opacity(0.22), radius: 2, x: 0, y: 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

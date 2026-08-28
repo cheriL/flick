@@ -131,7 +131,12 @@ final class FloatingPanelController {
         if panel === resultPanel {
             panel.hasShadow = false
         } else {
-            panel.hasShadow = true
+            // Disable the default NSWindow shadow. It renders as a
+            // hard dark edge around the window frame — the user
+            // reported this as a "black border" around the trigger
+            // button. The button itself draws a softer SwiftUI
+            // `.shadow()` instead (see `TriggerButtonView`).
+            panel.hasShadow = false
         }
     }
 
