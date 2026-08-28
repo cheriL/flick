@@ -28,5 +28,11 @@ mkdir -p "${APP_DIR}/Contents/MacOS"
 mkdir -p "${APP_DIR}/Contents/Resources"
 cp "${BIN_PATH}" "${APP_DIR}/Contents/MacOS/${APP_NAME}"
 cp Resources/Info.plist "${APP_DIR}/Contents/Info.plist"
+# Copy .icns files (app icon + in-app icons) into Contents/Resources. We
+# do not `cp -R Resources/` because that would risk dragging in any
+# stray file added under Resources/ in the future; whitelist .icns only.
+for icns in Resources/*.icns; do
+    [[ -f "$icns" ]] && cp "$icns" "${APP_DIR}/Contents/Resources/"
+done
 
 echo "==> done: ${APP_DIR}"
