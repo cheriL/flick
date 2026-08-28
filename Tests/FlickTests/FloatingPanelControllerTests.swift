@@ -68,4 +68,17 @@ import AppKit
         // because triggerActive is now false.
         #expect(controller.isOutsideClick(at: oldTriggerCenter))
     }
+
+    @Test func resultPanelDoesNotPinAppearance() {
+        // The result panel's chrome is an adaptive NSView subclass
+        // (`AdaptiveChromeView`) that repaints white in light mode and
+        // dark gray in dark mode; the SwiftUI text uses `.primary` /
+        // `.secondary` which auto-invert. We must NOT pin the panel —
+        // both layers track the system appearance so the panel looks
+        // the same as the rest of the UI (white panel + black text in
+        // light, dark panel + white text in dark).
+        let controller = FloatingPanelController()
+        #expect(controller.resultAppearanceForTesting == nil,
+                "result panel must inherit system appearance, not be pinned; got \(String(describing: controller.resultAppearanceForTesting))")
+    }
 }

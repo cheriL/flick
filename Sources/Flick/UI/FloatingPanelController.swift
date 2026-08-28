@@ -94,6 +94,11 @@ final class FloatingPanelController {
     /// `triggerFrameForTesting`.
     var resultFrameForTesting: CGRect { resultPanel.frame }
 
+    /// Effective appearance of the result panel. Exposed so tests can
+    /// assert the panel is pinned to `.aqua` (light) regardless of the
+    /// host's system appearance — see `configure(_:)` for why.
+    var resultAppearanceForTesting: NSAppearance? { resultPanel.appearance }
+
     // MARK: - Private
 
     /// Frame of the display the panel should be placed on. Resolved from the
@@ -116,6 +121,13 @@ final class FloatingPanelController {
         panel.backgroundColor = .clear
         // The result panel draws its own shadow on the chrome view, so we
         // only want a window-level shadow on the trigger panel.
+        //
+        // Both panels inherit the system appearance: the chrome
+        // (`PanelChromeView`) is an adaptive `NSView` subclass that
+        // paints white in light mode and dark gray in dark mode, and
+        // the SwiftUI text uses `.foregroundStyle(.primary/.secondary)`
+        // which auto-inverts. No pinning — the panel tracks the user's
+        // system appearance.
         if panel === resultPanel {
             panel.hasShadow = false
         } else {
