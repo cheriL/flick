@@ -35,6 +35,44 @@ Before re-launching during debugging, **explicitly tell the user**:
 
 Do not auto-launch first. This is a recorded project constraint.
 
+## Known pitfalls
+
+These are real bugs / design constraints future work has hit. Refer to them
+before chasing behaviour that has a known cause.
+
+- **Multi-display anchoring.** Never use `NSScreen.main` to pick the
+  panel's display rect. Flick is a menu-bar accessory and never becomes
+  key, so `NSScreen.main` always resolves to the primary (built-in)
+  display regardless of where the user is working. A panel anchored
+  near a cursor on a secondary display will be **clamped onto the
+  primary one** and rendered where the user isn't looking. Use
+  `PanelPositioning.screenFrame(for:in:fallback:)` (it picks the screen
+  containing the cursor and snaps to the nearest on dead zones).
+
+- **WeChat, Feishu, and many Electron apps don't expose selection to
+  Accessibility.** Their AX trees either skip text nodes entirely
+  (Feishu has ~6 descendants, none text), or the focused element stays
+  on the input box while the highlighted text lives in a sibling
+  subtree AX never reaches (WeChat). No amount of tree walking fixes
+  this — these apps don't follow macOS Accessibility conventions.
+  **Flick does not translate inside these apps.** Selection-based
+  translation requires an AX-visible frontmost app; if the user needs
+  to translate WeChat/Feishu text, they should paste it into Chrome
+  (which is AX-visible) or a different tool.
+
+- **Chromium / Electron apps need `AXManualAccessibility`.** Apps built
+  on Chromium only build their full accessibility tree when an
+  assistive client asks. Setting `AXManualAccessibility = true` on
+  their `AXUIElement` is the documented opt-in. Use it sparingly —
+  it is sticky and asking once per process is enough.
+
+- **`for _ in 0..<maxDepth` around a queue pop is a bug, not a depth
+  limit.** It caps the number of *iterations* (and so nodes examined),
+  not the depth. A child layer with hundreds of nodes will only be
+  sampled and the rest dropped. Use a per-queued depth + explicit node
+  budget; see `bfs(from:maxNodes:maxDepth:)` in
+  `AXUIElement+Selection.swift` for the working version.
+
 ## Project layout
 
 ```
