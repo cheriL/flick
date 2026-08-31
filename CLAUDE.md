@@ -161,12 +161,26 @@ scripts/build-app.sh, build-dmg.sh, start-chrome.sh
 - Before committing, read your diff. The user has trimmed README
   contents several times — don't silently re-add material they've removed.
 
+## Writing style: short & current
+
+The user wants both commit messages and source comments to stay terse and
+focused on what the code is *now*.
+
+- **Commit messages:** conventional-commits subject line + at most one short
+  body line. Don't enumerate files, list every fix, or write a changelog —
+  `git diff` carries that detail. Skip `Tests:` / `Behaviour:` breakdowns.
+- **Code comments:** explain *why* the current shape exists when it isn't
+  obvious. Do **not** leave "ghost comments" that narrate past failures:
+  no "previous versions tried X but…", no tombstones for deleted features,
+  no post-mortems of approaches that didn't pan out. A one-line pointer
+  to a spec or commit is fine when context is genuinely needed.
+
 ## When unsure
 
 - If a change could affect TCC / Accessibility behavior, ask the user to
   re-grant permission and rebuild via the workflow above.
 - If a change touches the OpenAI config storage, API surface, or the
-  translation dispatch logic, surface the change in the commit message
-  body so the user can review.
+  translation dispatch logic, mention it in the PR description (not the
+  commit subject) so the user can review before merge.
 - If a change adds a new build dependency, prefer keeping it to `brew`
   (which the script already uses) over adding a SwiftPM dependency.
