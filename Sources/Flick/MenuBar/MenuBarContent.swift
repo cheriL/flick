@@ -15,13 +15,16 @@ struct MenuBarContent: View {
     @State private var selectionEnabled: Bool = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            content
+        // `GlassEffectContainer` is required for `.glassEffect` to sample wallpaper; bare
+        // modifiers render only as a tint.
+        GlassEffectContainer(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                content
+            }
+            .padding(8)
+            .frame(width: 210)
+            .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
-        .padding(8)
-        .frame(width: 210)
-        // Frosted backdrop via SwiftUI's macOS 26+ `.glassEffect`; the `in:` shape clips to the panel corner radius.
-        .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .onAppear {
             isTrusted = AXUIElement.isProcessTrusted
             selectionEnabled = store.isSelectionEnabled
