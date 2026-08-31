@@ -5,7 +5,9 @@ appears next to the cursor, click it to see the result. Text selection →
 Apple Translation (on-device, free); ⌘ + selection → AI translation
 (OpenAI-compatible API).
 
-Target: **macOS 26+**, Swift 5.9, SwiftPM only — no Xcode project.
+Target: **macOS 26+**, Swift 5 language mode (forced via `Package.swift`'s
+`swift-tools-version: 6.2` + `swiftLanguageMode(.v5)`), SwiftPM only — no Xcode
+project.
 License: **GPL-3.0**. Repo: `https://github.com/cheriL/flick`.
 
 ## Build & run
@@ -92,9 +94,11 @@ Sources/Flick/
     AppleTranslationService.swift       # on-device Translation framework
     OpenAICompatibleService.swift       # OpenAI-compatible HTTP API
     TranslationService.swift            # dispatch + coexistence
-    HiddenTranslationHost.swift         # hidden Translate.app host (Apple)
   Settings/                             # AISettingsView, AutoStart
-  MenuBar/                              # MenuBarController, MenuBarContent, SelectionToggleRow
+  MenuBar/                              # MenuBarController, MenuBarContent,
+                                         # MenuPanelController, SelectionToggleRow
+                                         # MenuPanelController owns the NSStatusItem
+                                         # popup panel (own NSPanel + frosted bg).
   Config/ConfigStore.swift              # UserDefaults-backed config
   Models/AIConfig.swift                 # API key, base URL, model name
 Tests/FlickTests/                       # swift-testing (NOT XCTest)
