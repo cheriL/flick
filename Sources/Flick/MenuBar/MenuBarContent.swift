@@ -7,10 +7,12 @@ struct MenuBarContent: View {
     let store: ConfigStore
     let onQuit: () -> Void
 
-    /// Re-checked while the menu is visible. Updated via Combine from a
-    /// 1 Hz timer that we start in `.onAppear` and stop in `.onDisappear`,
-    /// so the timer only runs while the menu is actually open — no leak
-    /// when the menu is closed.
+    /// Accessibility trust state. Initial value comes from
+    /// `AXUIElement.isProcessTrusted` on first view creation; a 1 Hz
+    /// timer re-checks while the menu is visible so changes the user
+    /// makes externally (granting TCC in System Settings, then returning
+    /// to Flick) are reflected without needing to close and reopen the
+    /// menu.
     @State private var isTrusted = AXUIElement.isProcessTrusted
     @State private var ticker: AnyCancellable?
     /// Live mirror of the global "selection enabled" toggle. Initialised
@@ -25,16 +27,22 @@ struct MenuBarContent: View {
         }
         .padding(8)
         .frame(width: 210)
-        // Frosted-glass background. SwiftUI's built-in `.ultraThinMaterial`
-        // would be simpler, but `MenuBarExtra`'s hosting panel is opaque
-        // by default — the material samples the panel's own white
-        // background and produces a flat tinted look with no real
-        // wallpaper bleed-through. `NSVisualEffectView` with
-        // `blendingMode = .behindWindow` blurs whatever is drawn behind
-        // the window, which (combined with the window becoming
-        // effectively non-opaque for the affected region) gives us the
-        // Tailscale / NSMenu look — wallpaper visibly bleeds through.
-        .background(VisualEffectBackground())
+        // Liquid Glass backdrop via SwiftUI's macOS 26+ `.glassEffect`.
+        // This is the Apple-blessed replacement for the manual
+        // `NSVisualEffectView` + `.behindWindow` stack
+        // `MenuPanelController` previously installed — `.behindWindow`
+        // framebuffer sampling was effectively disabled on macOS 26
+        // (the window server's Liquid Glass pass replaces the surface
+        // underneath the panel before the visual effect view gets to
+        // sample it, so `NSVisualEffectView` degenerated into a flat
+        // tinted block). `.glassEffect` is SwiftUI's macOS 26+ API
+        // for the same look — it composes against the same Liquid
+        // Glass surface the rest of the system uses, so it matches
+        // the Tailscale / system-menu look without us needing to
+        // reach in to anything AppKit-private. The `in:` shape clips
+        // to the panel's corner radius so the glass inherits the
+        // rounded edges.
+        .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .onAppear {
             isTrusted = AXUIElement.isProcessTrusted
             selectionEnabled = store.isSelectionEnabled
@@ -206,33 +214,6 @@ enum ChromeLaunch {
         task.launchPath = "/bin/sh"
         task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
         try? task.run()
-    }
-}
-
-/// `NSViewRepresentable` wrapper around `NSVisualEffectView` with
-/// `blendingMode = .behindWindow`. This is the only path that gets a
-/// real frosted-glass look — including wallpaper bleed-through — out
-/// of `MenuBarExtra`'s panel, because `.behindWindow` lets the visual
-/// effect sample pixels from behind the window instead of from inside
-/// the (opaque) hosting view.
-///
-/// We pick `.popover` material because that's what `NSPopover` uses for
-/// its content area; it gives a neutral frosted backdrop that suits
-/// the popover-style menu panel. `.followsWindowActiveState` keeps the
-/// effect dimmed while the panel isn't key, matching how NSMenu and
-/// NSPopover behave when they're not focused.
-struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .popover
-        view.blendingMode = .behindWindow
-        view.state = .followsWindowActiveState
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = .popover
-        nsView.blendingMode = .behindWindow
     }
 }
 
