@@ -38,6 +38,16 @@ struct FlickApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+        // Make the hosting NSWindow resize to fit its SwiftUI content.
+        // Without this, the window stays at whatever frame it was first
+        // shown with — when the menu content height changes mid-display
+        // (e.g. permission-warning section disappears after TCC granted),
+        // the window keeps its old (taller) frame and the user sees a
+        // "transparent outline" of unblurred wallpaper above and below
+        // the menu. `.contentSize` is the only documented value that
+        // ties the window frame to its SwiftUI content's intrinsic
+        // size.
+        .windowResizability(.contentSize)
     }
 }
 
