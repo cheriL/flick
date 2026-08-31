@@ -5,7 +5,7 @@ appears next to the cursor, click it to see the result. Text selection →
 Apple Translation (on-device, free); ⌘ + selection → AI translation
 (OpenAI-compatible API).
 
-Target: **macOS 14+**, Swift 5.9, SwiftPM only — no Xcode project.
+Target: **macOS 26+**, Swift 5.9, SwiftPM only — no Xcode project.
 License: **GPL-3.0**. Repo: `https://github.com/cheriL/flick`.
 
 ## Build & run
