@@ -27,28 +27,22 @@ struct MenuBarContent: View {
         }
         .padding(8)
         .frame(width: 210)
-        // SwiftUI's built-in `.ultraThinMaterial`. We previously used an
-        // `NSVisualEffectView` with `blendingMode = .behindWindow` here,
-        // but on macOS 26+ the `MenuBarExtra` hosting panel is opaque by
-        // default and SwiftUI auto-applies Liquid Glass to it — neither
-        // property is reachable from outside the scene, so `.behindWindow`
-        // has nothing real to sample and the effect degenerates into a
-        // flat tinted block regardless of material choice. Dropping back
-        // to the system material trades true wallpaper blur (which we'd
-        // only get by dropping `MenuBarExtra` entirely and managing a
-        // custom `NSPanel`) for a translucent panel that adapts to
-        // light/dark and matches other system surfaces. `.ultraThin` is
-        // the most translucent of the built-in materials, closest to the
-        // Tailscale/NSMenu feel.
-        //
-        // The `.windowResizability(.contentSize)` modifier on the
-        // `MenuBarExtra` in `App.swift` makes the hosting `NSWindow`
-        // resize to match its content. Without it, the `NSWindow` keeps
-        // its old frame when the SwiftUI content height shrinks (e.g. when
-        // the permission-warning section disappears after TCC) and the
-        // user sees a "transparent outline" of unblurred wallpaper above
-        // and below the menu.
-        .background(.ultraThinMaterial)
+        // Liquid Glass backdrop via SwiftUI's macOS 26+ `.glassEffect`.
+        // This is the Apple-blessed replacement for the manual
+        // `NSVisualEffectView` + `.behindWindow` stack
+        // `MenuPanelController` previously installed — `.behindWindow`
+        // framebuffer sampling was effectively disabled on macOS 26
+        // (the window server's Liquid Glass pass replaces the surface
+        // underneath the panel before the visual effect view gets to
+        // sample it, so `NSVisualEffectView` degenerated into a flat
+        // tinted block). `.glassEffect` is SwiftUI's macOS 26+ API
+        // for the same look — it composes against the same Liquid
+        // Glass surface the rest of the system uses, so it matches
+        // the Tailscale / system-menu look without us needing to
+        // reach in to anything AppKit-private. The `in:` shape clips
+        // to the panel's corner radius so the glass inherits the
+        // rounded edges.
+        .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .onAppear {
             isTrusted = AXUIElement.isProcessTrusted
             selectionEnabled = store.isSelectionEnabled
