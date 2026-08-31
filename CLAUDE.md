@@ -160,6 +160,14 @@ scripts/build-app.sh, build-dmg.sh, start-chrome.sh
 - Branch from `master`. Keep unrelated changes on separate branches.
 - Before committing, read your diff. The user has trimmed README
   contents several times — don't silently re-add material they've removed.
+- **Before committing, audit `git diff` for comment bloat.** Sweep every
+  staged line for: redundant comments ("this does X" / SDK behaviour
+  descriptions), ghost comments (past-failure narration, tombstones
+  for deleted features), and "without X, you'd get Y" failure modes.
+  Default is no comment — remove anything that doesn't survive the
+  "Writing style" rule's reverse check. Doing this once *after* writing
+  the change catches the patterns the rule's prose alone doesn't
+  internalise.
 
 ## Writing style: short & current
 
