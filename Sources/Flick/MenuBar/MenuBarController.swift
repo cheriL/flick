@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Translation
 
 final class MenuBarController {
     private let store: ConfigStore
@@ -12,18 +11,6 @@ final class MenuBarController {
     private var currentTask: Task<Void, Never>?
     private var lastText: String?
 
-    /// Hidden 1×1 borderless window that hosts the SwiftUI `HiddenTranslationHost`,
-    /// which keeps an Apple Translation session alive without showing any UI.
-    ///
-    /// NOTE: API deviation from brief — the brief stored the host eagerly as
-    /// `NSHostingController(rootView: HiddenTranslationHost(session: TranslationSession(source: nil, target: ...)))`.
-    /// The macOS SDK on this build host only exposes
-    /// `TranslationSession(installedSource:target:)` (macOS 26+), and
-    /// `HiddenTranslationHost` is itself `@available(macOS 26.0, *)`, so the host can
-    /// only be constructed behind an availability check. It is therefore stored as an
-    /// optional window that stays nil on macOS < 26.
-    private var translationHostWindow: NSWindow?
-
     init(store: ConfigStore, panel: FloatingPanelController) {
         self.store = store
         self.panel = panel
@@ -31,7 +18,6 @@ final class MenuBarController {
         // Seed the monitor with the persisted toggle value so the
         // default-ON behaviour matches what's already in UserDefaults.
         self.monitor.isEnabled = store.isSelectionEnabled
-        mountHiddenHost()
     }
 
     func start() {
@@ -70,28 +56,6 @@ final class MenuBarController {
     }
 
     // MARK: - Private
-
-    private func mountHiddenHost() {
-        // See note on `translationHostWindow`: on macOS < 26 the Apple translation path
-        // is unavailable at runtime (matching `AppleTranslationService.translate`, which
-        // throws `.unsupportedLanguagePair` there), so we mount nothing.
-        guard #available(macOS 26.0, *) else { return }
-
-        let session = TranslationSession(
-            installedSource: Locale.current.language,
-            target: .init(identifier: "zh-Hans")
-        )
-        let host = NSHostingController(rootView: HiddenTranslationHost(session: session))
-        let window = NSWindow(
-            contentRect: NSRect(x: -10000, y: -10000, width: 1, height: 1),
-            styleMask: [.borderless],
-            backing: .buffered, defer: false
-        )
-        window.isReleasedWhenClosed = false
-        window.contentViewController = host
-        window.orderBack(nil)
-        translationHostWindow = window
-    }
 
     private func handle(_ note: Notification) {
         guard let info = note.userInfo,
