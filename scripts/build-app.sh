@@ -14,9 +14,9 @@ BUILD_DIR=".build"
 APP_DIR="${BUILD_DIR}/${APP_NAME}.app"
 
 echo "==> swift build -c ${CONFIG}"
-swift build -c "${CONFIG}"
+swift build -c "${CONFIG}" --triple arm64-apple-macosx26
 
-BIN_PATH="$(swift build -c "${CONFIG}" --show-bin-path)/${APP_NAME}"
+BIN_PATH="$(swift build -c "${CONFIG}" --triple arm64-apple-macosx26 --show-bin-path)/${APP_NAME}"
 if [[ ! -f "${BIN_PATH}" ]]; then
     echo "error: built binary not found at ${BIN_PATH}" >&2
     exit 1
