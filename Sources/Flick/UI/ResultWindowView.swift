@@ -9,21 +9,16 @@ enum ResultState: Equatable {
 struct ResultWindowView: View {
     let original: String
     let state: ResultState
-    let isAI: Bool
     let onRetry: () -> Void
 
     // MARK: - Test hooks
     // SwiftUI renders `Image(systemName:)` into private view classes that don't expose the
     // symbol name — these hooks let tests assert icon selection without walking the tree.
 
-    /// Both AI and normal loading use a system `ProgressView`; this hook stays so tests can
-    /// assert the loading branch picks no SF Symbol.
     var loadingIconName: String? { nil }
 
-    /// Label shown in the loading branch.
-    var loadingLabel: String { isAI ? "AI 翻译中…" : "翻译中…" }
+    var loadingLabel: String { "翻译中…" }
 
-    /// SF Symbol shown next to the failure message.
     var failureIconName: String? { "xmark.circle" }
 
     var body: some View {

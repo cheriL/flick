@@ -14,7 +14,7 @@ import AppKit
     }
 
     @Test func outsideClickDoesNotDismissWhenInsideTrigger() {
-        controller.showTrigger(at: CGPoint(x: 200, y: 200), text: "hello", isAI: false, onTap: {})
+        controller.showTrigger(at: CGPoint(x: 200, y: 200), text: "hello", onTap: {})
         let frame = controller.triggerFrameForTesting
         let insidePoint = CGPoint(x: frame.midX, y: frame.midY)
         #expect(!controller.isOutsideClick(at: insidePoint),
@@ -22,7 +22,7 @@ import AppKit
     }
 
     @Test func outsideClickDismissesWhenOutsideTrigger() {
-        controller.showTrigger(at: CGPoint(x: 200, y: 200), text: "hello", isAI: false, onTap: {})
+        controller.showTrigger(at: CGPoint(x: 200, y: 200), text: "hello", onTap: {})
         let frame = controller.triggerFrameForTesting
         // A point far past the panel's bottom-right corner is outside
         // regardless of where the headless screen geometry clamped it.
@@ -31,7 +31,7 @@ import AppKit
     }
 
     @Test func outsideClickDoesNotDismissWhenInsideResult() {
-        controller.showResult(original: "hello", state: .loading, at: CGPoint(x: 100, y: 100), isAI: false, onRetry: {})
+        controller.showResult(original: "hello", state: .loading, at: CGPoint(x: 100, y: 100), onRetry: {})
         let frame = controller.resultFrameForTesting
         let insidePoint = CGPoint(x: frame.midX, y: frame.midY)
         #expect(!controller.isOutsideClick(at: insidePoint),
@@ -39,15 +39,15 @@ import AppKit
     }
 
     @Test func outsideClickDismissesWhenOutsideResult() {
-        controller.showResult(original: "hello", state: .loading, at: CGPoint(x: 100, y: 100), isAI: false, onRetry: {})
+        controller.showResult(original: "hello", state: .loading, at: CGPoint(x: 100, y: 100), onRetry: {})
         let frame = controller.resultFrameForTesting
         let farAway = CGPoint(x: frame.maxX + 5000, y: frame.maxY + 5000)
         #expect(controller.isOutsideClick(at: farAway))
     }
 
     @Test func dismissHidesBothPanels() {
-        controller.showTrigger(at: CGPoint(x: 50, y: 50), text: "x", isAI: false, onTap: {})
-        controller.showResult(original: "x", state: .loading, at: CGPoint(x: 50, y: 50), isAI: false, onRetry: {})
+        controller.showTrigger(at: CGPoint(x: 50, y: 50), text: "x", onTap: {})
+        controller.showResult(original: "x", state: .loading, at: CGPoint(x: 50, y: 50), onRetry: {})
         controller.dismiss()
         #expect(controller.isOutsideClick(at: CGPoint(x: 100, y: 100)))
     }
@@ -58,12 +58,12 @@ import AppKit
         // if the result panel is sitting somewhere else entirely.
         let triggerOrigin = CGPoint(x: 50, y: 50)
         let resultCursor = CGPoint(x: 800, y: 600)
-        controller.showTrigger(at: triggerOrigin, text: "x", isAI: false, onTap: {})
+        controller.showTrigger(at: triggerOrigin, text: "x", onTap: {})
         let oldTriggerCenter = CGPoint(
             x: controller.triggerFrameForTesting.midX,
             y: controller.triggerFrameForTesting.midY
         )
-        controller.showResult(original: "x", state: .loading, at: resultCursor, isAI: false, onRetry: {})
+        controller.showResult(original: "x", state: .loading, at: resultCursor, onRetry: {})
         // Click in the middle of where the trigger was — must be "outside"
         // because triggerActive is now false.
         #expect(controller.isOutsideClick(at: oldTriggerCenter))

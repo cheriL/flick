@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+/// Owns the menu-bar popup `NSPanel`. We host it directly (rather than via SwiftUI's
+/// `MenuBarExtra`) so we control show/hide/position and the visual-effect backdrop.
 final class MenuBarController {
     private let store: ConfigStore
     private let panel: FloatingPanelController
@@ -10,7 +12,6 @@ final class MenuBarController {
     private var clearedSubscription: NSObjectProtocol?
     private var enabledSubscription: NSObjectProtocol?
     private var currentTask: Task<Void, Never>?
-    private var lastText: String?
 
     private let statusItem: NSStatusItem
 
@@ -97,50 +98,47 @@ final class MenuBarController {
         guard let info = note.userInfo,
               let text = info["text"] as? String,
               let cursorValue = info["cursor"] as? NSValue else { return }
-        let isAI = (info["isAI"] as? Bool) ?? false
         let cursor = cursorValue.pointValue
 
         // Selection in another app while the menu is open = user moved on. Dismiss menu first.
         menuPanel.hide()
 
         // Show trigger button first; the actual translation happens on tap.
-        panel.showTrigger(at: cursor, text: text, isAI: isAI) { [weak self] in
-            // Mark selection consumed so ⌘ toggles / flag changes don't re-show the trigger
+        panel.showTrigger(at: cursor, text: text) { [weak self] in
+            // Mark selection consumed so re-polls don't re-show the trigger
             // over the result panel that's about to appear.
             self?.monitor.markConsumed()
-            self?.runTranslation(text: text, at: cursor, isAI: isAI)
+            self?.runTranslation(text: text, at: cursor)
         }
     }
 
-    private func runTranslation(text: String, at cursor: CGPoint, isAI: Bool) {
+    private func runTranslation(text: String, at cursor: CGPoint) {
         currentTask?.cancel()
         // Show loading synchronously — `showResult` hides the trigger in the same runloop tick
         // as the click. Deferring into the Task leaves the trigger up long enough for a follow-up
         // click to dismiss the popup before the result appears.
-        panel.showResult(original: text, state: .loading, at: cursor, isAI: isAI, onRetry: { [weak self] in
-            self?.runTranslation(text: text, at: cursor, isAI: isAI)
+        panel.showResult(original: text, state: .loading, at: cursor, onRetry: { [weak self] in
+            self?.runTranslation(text: text, at: cursor)
         })
         currentTask = Task { [weak self] in
             guard let self else { return }
             let target = Locale.Language(identifier: Locale.preferredLanguages.first ?? "en")
-            let service: TranslationService = isAI
-                ? OpenAICompatibleService(config: store.load())
-                : AppleTranslationService()
+            let service = OpenAICompatibleService(config: store.load())
 
             do {
                 let translated = try await service.translate(text, to: target)
                 if Task.isCancelled { return }
                 await MainActor.run {
-                    self.panel.showResult(original: text, state: .success(translated), at: cursor, isAI: isAI, onRetry: { [weak self] in
-                        self?.runTranslation(text: text, at: cursor, isAI: isAI)
+                    self.panel.showResult(original: text, state: .success(translated), at: cursor, onRetry: { [weak self] in
+                        self?.runTranslation(text: text, at: cursor)
                     })
                 }
             } catch {
                 if Task.isCancelled { return }
                 let msg = (error as? TranslationError)?.errorDescription ?? error.localizedDescription
                 await MainActor.run {
-                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, isAI: isAI, onRetry: { [weak self] in
-                        self?.runTranslation(text: text, at: cursor, isAI: isAI)
+                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, onRetry: { [weak self] in
+                        self?.runTranslation(text: text, at: cursor)
                     })
                 }
             }

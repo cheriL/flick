@@ -2,12 +2,11 @@ import SwiftUI
 import AppKit
 
 struct TriggerButtonView: View {
-    let isAI: Bool
     let onTap: () -> Void
 
     /// Bundle resource name rendered inside the trigger button. Test-visible since SwiftUI
 /// renders `Image(nsImage:)` into private view classes that don't surface the resource name.
-    var iconResourceName: String { isAI ? "Flick-AI" : "Flick" }
+    var iconResourceName: String { "Flick" }
 
     var body: some View {
         Button(action: onTap) {
@@ -21,7 +20,7 @@ struct TriggerButtonView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                 } else {
-                    Image(systemName: isAI ? "ellipsis.bubble.fill" : "character.bubble.fill")
+                    Image(systemName: "character.bubble.fill")
                         .font(.system(size: 22, weight: .medium))
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(
@@ -35,6 +34,6 @@ struct TriggerButtonView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(isAI ? "AI 翻译" : "普通翻译")
+        .help("翻译")
     }
 }

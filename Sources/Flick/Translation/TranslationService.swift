@@ -13,7 +13,6 @@ protocol TranslationService: AnyObject {
 enum TranslationError: LocalizedError, Equatable {
     case empty
     case tooLong
-    case unsupportedLanguagePair(source: String?, target: String)
     case apiKeyMissing
     case network(String)
     case http(status: Int, body: String)
@@ -24,8 +23,6 @@ enum TranslationError: LocalizedError, Equatable {
         switch self {
         case .empty:                       return "没有可翻译的文本"
         case .tooLong:                     return "文本过长"
-        case .unsupportedLanguagePair(_, let t):
-            return "Apple 不支持翻译到 \(t)，请用 AI 模式（按住 ⌘）"
         case .apiKeyMissing:               return "AI 翻译需要先在菜单栏 → AI 设置 配置 API Key"
         case .network(let msg):            return "网络错误：\(msg)"
         case .http(let s, let b):          return "服务返回 HTTP \(s): \(b)"

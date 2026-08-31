@@ -34,14 +34,14 @@ final class FloatingPanelController {
 
     // MARK: - Public API
 
-    func showTrigger(at cursor: CGPoint, text: String, isAI: Bool, onTap: @escaping () -> Void) {
+    func showTrigger(at cursor: CGPoint, text: String, onTap: @escaping () -> Void) {
         let size = CGSize(width: 28, height: 28)
         let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         triggerPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         triggerPanel.contentView = NSHostingView(
-            rootView: TriggerButtonView(isAI: isAI, onTap: onTap)
+            rootView: TriggerButtonView(onTap: onTap)
         )
         triggerPanel.orderFrontRegardless()
         resultPanel.orderOut(nil)
@@ -49,13 +49,13 @@ final class FloatingPanelController {
         triggerActive = true
     }
 
-    func showResult(original: String, state: ResultState, at cursor: CGPoint, isAI: Bool, onRetry: @escaping () -> Void) {
+    func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
         let size = CGSize(width: 360, height: 140) // height grows with content via resizable mask
         let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
         resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
-        let root = ResultWindowView(original: original, state: state, isAI: isAI, onRetry: onRetry)
+        let root = ResultWindowView(original: original, state: state, onRetry: onRetry)
         let container = PanelContainerView(rootView: root)
         resultPanel.contentView = container
         resultPanel.orderFrontRegardless()

@@ -3,20 +3,14 @@ import Testing
 
 @Suite @MainActor final class ResultWindowViewTests {
 
-    @Test func aiLoadingUsesProgressViewAndLabel() {
-        let view = ResultWindowView(original: "hi", state: .loading, isAI: true, onRetry: {})
-        #expect(view.loadingIconName == nil)
-        #expect(view.loadingLabel == "AI 翻译中…")
-    }
-
-    @Test func normalLoadingUsesProgressViewAndLabel() {
-        let view = ResultWindowView(original: "hi", state: .loading, isAI: false, onRetry: {})
+    @Test func loadingUsesProgressViewAndLabel() {
+        let view = ResultWindowView(original: "hi", state: .loading, onRetry: {})
         #expect(view.loadingIconName == nil)
         #expect(view.loadingLabel == "翻译中…")
     }
 
     @Test func failureUsesXmarkCircle() {
-        let view = ResultWindowView(original: "hi", state: .failure("boom"), isAI: false, onRetry: {})
+        let view = ResultWindowView(original: "hi", state: .failure("boom"), onRetry: {})
         #expect(view.failureIconName == "xmark.circle")
     }
 }
