@@ -19,15 +19,11 @@ struct AXSelectionProvider: SelectionProvider {
 
 extension Notification.Name {
     static let flickSelectionChanged = Notification.Name("Flick.selectionChanged")
-    /// Posted when the previously-observed selection has cleared (e.g. the
-    /// user clicked into an empty area, switched to an app that doesn't
-    /// expose selection, or the frontmost app's selection went empty). The
-    /// controller uses this to dismiss the lingering trigger button so it
-    /// doesn't stay stuck on the screen at an old position.
+    /// Posted when the previously-observed selection has cleared. Controller uses this to
+    /// dismiss a lingering trigger button at an old position.
     static let flickSelectionCleared = Notification.Name("Flick.selectionCleared")
-    /// Posted when the user flips the global "selection enabled" switch in
-    /// the menu bar. The controller listens for this and forwards the new
-    /// value to the monitor so polling stops/starts immediately.
+    /// Posted when the user flips the menu-bar "selection enabled" switch. Controller forwards
+    /// the new value to the monitor so polling stops/starts immediately.
     static let flickSelectionEnabledChanged = Notification.Name("Flick.selectionEnabledChanged")
 }
 
@@ -38,25 +34,18 @@ final class TextSelectionMonitor {
     private var flagsMonitor: Any?
     private var lastText: String?
     private var lastIsAI: Bool = false
-    /// Cursor position at the moment the current `lastText` was first
-    /// seen. Frozen across ⌘ toggles so the trigger button doesn't
-    /// jump when the user's hand moves the cursor between selection
-    /// and modifier change. Refreshed only when the text changes.
+    /// Cursor position at the moment the current `lastText` was first seen. Frozen across ⌘ toggles
+    /// so the trigger button doesn't jump when the cursor moves between selection and modifier change.
     private var lastCursor: NSPoint = .zero
-    /// Set when the user taps the trigger button (or a translation
-    /// finishes for the current selection). While set, the monitor
-    /// suppresses ALL notifications for that text — the user has
-    /// already acted on it. Cleared when the selection is dropped, so
-    /// the user can re-translate the same text by clearing and
-    /// re-selecting.
+    /// Set when the user taps the trigger button (or a translation finishes). While set, the monitor
+    /// suppresses all notifications for that text — the user has already acted on it. Cleared when
+    /// the selection is dropped.
     private var consumedText: String?
     private var lastFrontmostPID: pid_t = 0
     private var tickCount: Int = 0
-    /// Global kill-switch driven by the menu-bar toggle. When `false`
-    /// the monitor still ticks (so the `flagsMonitor` keeps responding
-    /// to ⌘ toggles), but `poll` short-circuits before touching AX or
-    /// posting notifications, and any previously-seen selection is
-    /// forgotten.
+    /// Global kill-switch from the menu-bar toggle. When `false` the monitor still ticks (so
+    /// `flagsMonitor` keeps responding to ⌘ toggles), but `poll` short-circuits before AX or
+    /// notifications, and any previously-seen selection is forgotten.
     var isEnabled: Bool = true
 
     init(provider: SelectionProvider, interval: TimeInterval = 0.3) {
@@ -79,10 +68,8 @@ final class TextSelectionMonitor {
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
-        // React to ⌘ / ⇧ / ⌥ / ⌃ changes immediately instead of waiting
-        // for the next tick. Without this, the trigger button's "AI" vs
-        // "译" label is frozen at the moment the selection was captured
-        // — pressing ⌘ after selecting doesn't update it.
+        // React to ⌘ / ⇧ / ⌥ / ⌃ changes immediately so the trigger button's "AI" vs "译" label updates
+        // when the user toggles ⌘ after selecting.
         flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.poll()
             return event
@@ -98,9 +85,7 @@ final class TextSelectionMonitor {
 
     private func poll() {
         tickCount += 1
-        // Global toggle off → no AX work, no notifications. If we had a
-        // lingering selection, treat it as cleared so a stale trigger
-        // button isn't left on screen.
+        // Toggle off: skip AX, drop any lingering selection so the trigger doesn't stay on screen.
         guard isEnabled else {
             if lastText != nil {
                 lastText = nil
@@ -114,9 +99,7 @@ final class TextSelectionMonitor {
         let frontName = frontmost?.localizedName ?? "?"
         let frontPID = frontmost?.processIdentifier ?? 0
 
-        // Log when frontmost changes — that's the signal a new app was
-        // activated. Also log every ~3s so a stuck-on-one-app state is
-        // visible in the log.
+        // Log frontmost changes (new app activated) and every ~3s as a heartbeat.
         if frontPID != lastFrontmostPID {
             monLog.notice("frontmost -> \(frontName, privacy: .public) (pid \(frontPID, privacy: .public))")
             lastFrontmostPID = frontPID
@@ -127,9 +110,7 @@ final class TextSelectionMonitor {
         let cmdHeld = NSEvent.modifierFlags.contains(.command)
 
         guard let (text, _) = provider.currentSelection() else {
-            // No selection in the frontmost app. If we previously had a
-            // selection, signal the controller to dismiss the lingering
-            // trigger panel so it doesn't sit at an old position forever.
+            // No selection — signal the controller to dismiss the lingering trigger panel.
             if lastText != nil {
                 lastText = nil
                 lastIsAI = false
@@ -140,8 +121,7 @@ final class TextSelectionMonitor {
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty && trimmed.count <= 5000 else {
-            // Whitespace-only or too long — treat as cleared so the next
-            // real selection isn't masked by an equal `lastText`.
+            // Whitespace-only or too long — treat as cleared so the next real selection isn't masked.
             if lastText != nil {
                 lastText = nil
                 lastIsAI = false
@@ -150,20 +130,13 @@ final class TextSelectionMonitor {
             }
             return
         }
-        // Suppress all notifications for a "consumed" selection — the
-        // user has already tapped the trigger and the result panel is
-        // showing (or just finished). Re-emitting would pop the trigger
-        // back over the result panel when the user releases ⌘.
+        // Suppress notifications for a "consumed" selection — the user has already acted on it.
         if trimmed == consumedText { return }
-        // Diff on (text, ⌘ held) so the trigger label switches between
-        // "AI" and "译" when the user toggles ⌘ while the selection
-        // stays put.
+        // Diff on (text, ⌘ held) so the label switches between "AI" and "译" on ⌘ toggle.
         if trimmed == lastText && cmdHeld == lastIsAI { return }
 
-        // Capture the cursor only on the first poll for a given text.
-        // ⌘ toggles (same text, different isAI) reuse the original
-        // position so the button doesn't jump if the cursor drifted
-        // between selection and modifier change.
+        // Capture cursor on the first poll for a given text; ⌘ toggles reuse the original
+        // position so the button doesn't jump if the cursor drifts between selection and toggle.
         let cursor: NSPoint
         if trimmed == lastText {
             cursor = lastCursor

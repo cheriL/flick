@@ -7,18 +7,11 @@ struct MenuBarContent: View {
     let store: ConfigStore
     let onQuit: () -> Void
 
-    /// Accessibility trust state. Initial value comes from
-    /// `AXUIElement.isProcessTrusted` on first view creation; a 1 Hz
-    /// timer re-checks while the menu is visible so changes the user
-    /// makes externally (granting TCC in System Settings, then returning
-    /// to Flick) are reflected without needing to close and reopen the
-    /// menu.
+    /// Re-checked while the menu is visible via a 1 Hz Combine timer started in `.onAppear`.
     @State private var isTrusted = AXUIElement.isProcessTrusted
     @State private var ticker: AnyCancellable?
-    /// Live mirror of the global "selection enabled" toggle. Initialised
-    /// from `ConfigStore` in `.onAppear` and updated when the user flips
-    /// the menu-bar switch. Persisted via `store.setSelectionEnabled`
-    /// which also posts the notification the controller listens for.
+    /// Live mirror of `ConfigStore.isSelectionEnabled`. Persisting via
+    /// `store.setSelectionEnabled` posts the notification `MenuBarController` listens for.
     @State private var selectionEnabled: Bool = true
 
     var body: some View {
@@ -27,21 +20,7 @@ struct MenuBarContent: View {
         }
         .padding(8)
         .frame(width: 210)
-        // Liquid Glass backdrop via SwiftUI's macOS 26+ `.glassEffect`.
-        // This is the Apple-blessed replacement for the manual
-        // `NSVisualEffectView` + `.behindWindow` stack
-        // `MenuPanelController` previously installed — `.behindWindow`
-        // framebuffer sampling was effectively disabled on macOS 26
-        // (the window server's Liquid Glass pass replaces the surface
-        // underneath the panel before the visual effect view gets to
-        // sample it, so `NSVisualEffectView` degenerated into a flat
-        // tinted block). `.glassEffect` is SwiftUI's macOS 26+ API
-        // for the same look — it composes against the same Liquid
-        // Glass surface the rest of the system uses, so it matches
-        // the Tailscale / system-menu look without us needing to
-        // reach in to anything AppKit-private. The `in:` shape clips
-        // to the panel's corner radius so the glass inherits the
-        // rounded edges.
+        // Frosted backdrop via SwiftUI's macOS 26+ `.glassEffect`; the `in:` shape clips to the panel corner radius.
         .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .onAppear {
             isTrusted = AXUIElement.isProcessTrusted
@@ -63,11 +42,7 @@ struct MenuBarContent: View {
             thinDivider
         }
 
-        // The single Tailscale-style row that doubles as the hint and
-        // the kill-switch. The previous static `⌘ 按住 ⌘ 选词 → AI 翻译`
-        // label was removed by user request — the subtitle below the
-        // title now carries the same hint, and the toggle on the right
-        // is the action.
+        // Tailscale-style row: title + subtitle on the left, pill toggle on the right.
         SelectionToggleRow(
             isOn: Binding(
                 get: { selectionEnabled },
@@ -88,10 +63,7 @@ struct MenuBarContent: View {
             AISettingsWindow.show(store: store)
         }
 
-        // Original Flick menu (and Tailscale) put a separator between
-        // "Settings…" and "Quit" to mark Quit as a terminal action that
-        // shouldn't be visually grouped with the configuration options
-        // above. Restored here after the refactor dropped it.
+        // Separator marks Quit as a terminal action.
         thinDivider
 
         actionButton("退出", action: onQuit)
@@ -122,14 +94,7 @@ struct MenuBarContent: View {
         .padding(.vertical, 4)
     }
 
-    /// Hairline separator between sections. `Color.primary.opacity(0.10)`
-    /// gives a reliable contrast against any material — the
-    /// `Color.secondary` variant we tried before collapsed into the
-    /// panel background on the light system appearance and vanished
-    /// entirely. The horizontal insets match the action row's
-    /// horizontal padding so the line breaks cleanly under the label
-    /// column rather than running edge-to-edge. Vertical padding
-    /// matches the breathing room in the Tailscale reference.
+    /// Hairline separator using `Color.primary.opacity(0.10)` — reads against any material.
     private var thinDivider: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.10))
@@ -146,11 +111,8 @@ struct MenuBarContent: View {
     }
 }
 
-/// Plain-button style for the action rows in the popover. Matches the
-/// native NSMenu item look: full-width hit area, ~26pt row height,
-/// and a subtle press highlight. The fixed height keeps the three
-/// action rows visually even — without it, the divider + VStack
-/// spacing produces uneven gaps depending on label length.
+/// Plain button style for the action rows. Native NSMenu look: full-width hit area,
+/// ~26pt fixed row height so the three rows stay visually even, subtle press highlight.
 struct MenuActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -187,14 +149,12 @@ enum PermissionGrant {
         }
     }
 
-    /// Relaunches this app fresh — needed because macOS only honours an
-    /// Accessibility grant after the process restarts; the existing
-    /// process keeps getting `AXIsProcessTrusted() == false` until then.
+    /// Relaunches this app fresh — macOS only honours a new Accessibility grant after
+    /// the process restarts; the current process keeps seeing `isProcessTrusted == false`.
     static func relaunchSelf() {
         let bundlePath = Bundle.main.bundlePath
-        // Spawn a tiny shell that waits for us to exit, then opens the
-        // .app again. Calling `NSWorkspace.openApplication` from inside
-        // `applicationWillTerminate` is unreliable, hence the detour.
+        // Tiny shell waits for us to exit, then opens the .app. `NSWorkspace.openApplication`
+        // from inside `applicationWillTerminate` is unreliable, hence the detour.
         let task = Process()
         task.launchPath = "/bin/sh"
         task.arguments = ["-c", "sleep 0.2 && open \"\(bundlePath)\""]
@@ -203,11 +163,9 @@ enum PermissionGrant {
     }
 }
 
-/// Launches Google Chrome with the `--force-renderer-accessibility` flag
-/// so Chrome's renderer process exposes web content to macOS Accessibility.
-/// Without this, `AXUIElement` calls into Chrome's web content fail
-/// (Chrome's main process tree doesn't include the `AXWebArea`s, only the
-/// owning window) and Flick can't read selected text in web pages.
+/// Launches Chrome with `--force-renderer-accessibility` so its renderer exposes web content
+/// to AX. Without it, `AXUIElement` calls into Chrome's web content see no `AXWebArea` and
+/// Flick can't read selected text on web pages.
 enum ChromeLaunch {
     static func launchWithAccessibilityFlag() {
         let task = Process()
@@ -217,17 +175,8 @@ enum ChromeLaunch {
     }
 }
 
-/// Hosts the AI settings SwiftUI view in a regular `NSWindow`.
-///
-/// We can't use a SwiftUI `.popover` from inside `MenuBarExtra`'s default
-/// menu-style content: when the user clicks a menu item, the menu
-/// dismisses immediately and the popover's anchor view is gone before the
-/// popover can present. A standalone window has its own lifecycle and is
-/// shown reliably from a menu click.
-///
-/// A single instance is reused — calling `show` again just brings the
-/// existing window forward — so clicking the menu item twice doesn't
-/// stack settings windows.
+/// Hosts `AISettingsView` in a standalone `NSWindow` so it has its own lifecycle and survives
+/// menu dismissal. A single instance is reused across `show` calls.
 enum AISettingsWindow {
     private static var window: NSWindow?
 
@@ -245,16 +194,11 @@ enum AISettingsWindow {
         w.title = "Flick 设置"
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.isReleasedWhenClosed = false
-        // Initial content size. AISettingsView declares `frame(width: 400)`
-        // and lets the height fall out of the SwiftUI layout; macOS then
-        // sizes the window to that intrinsic height. The number below is
-        // a hint for the first paint before auto-sizing kicks in, so we
-        // match the new flat layout (~310pt) instead of the old grouped
-        // form (~360pt).
+        // Initial content-size hint for the first paint; SwiftUI's intrinsic-size layout takes over.
         w.setContentSize(NSSize(width: 400, height: 320))
         w.center()
-        // If the user closes via the red traffic-light button, drop the
-        // cached reference so the next menu click re-creates a fresh one.
+        // Drop the cached reference if the user closes via the traffic-light button,
+        // so the next menu click re-creates a fresh one.
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { _ in
             if window === w { window = nil }
         }

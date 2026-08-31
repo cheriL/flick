@@ -5,35 +5,15 @@ struct TriggerButtonView: View {
     let isAI: Bool
     let onTap: () -> Void
 
-    /// Bundle resource name rendered inside the trigger button. Exposed
-    /// for tests (SwiftUI renders `Image(nsImage:)` into private view
-    /// classes that don't surface the resource name, so we assert against
-    /// this public property instead of introspecting the rendered tree).
-    ///
-    /// The actual image is loaded from `Contents/Resources/<name>.icns`
-    /// at render time, so this is just a stable identifier — same
-    /// contract as the previous SF-Symbol `iconName` hook.
+    /// Bundle resource name rendered inside the trigger button. Test-visible since SwiftUI
+/// renders `Image(nsImage:)` into private view classes that don't surface the resource name.
     var iconResourceName: String { isAI ? "Flick-AI" : "Flick" }
 
     var body: some View {
         Button(action: onTap) {
-            // 28×28 frame, no extra background/border outside the
-            // shape itself. `contentShape` extends the hit area to
-            // the whole frame even though the visible glyph is
-            // smaller.
-            //
-            // The drop shadow sits *under* the icon (offset down by
-            // 1pt) and is intentionally subtle. The window-level
-            // NSWindow shadow is disabled in `FloatingPanelController`
-            // because its hard dark edge around the panel frame read
-            // as a black border — this SwiftUI shadow gives the same
-            // depth cue without the harsh outline.
-            //
-            // Both modes use the full-colour .icns (the popup has its
-            // own background, so we don't apply template tinting
-            // like the menu-bar icon does). The fallback SF Symbol
-            // matches the pre-refactor look for environments without
-            // a built bundle (e.g. `swift test`).
+            // 28×28 with subtle SwiftUI drop shadow — window-level shadow is disabled (see
+            // FloatingPanelController). SF Symbol fallback covers environments without the bundle
+            // (e.g. `swift test`).
             ZStack {
                 if let path = Bundle.main.path(forResource: iconResourceName, ofType: "icns"),
                    let image = NSImage(contentsOfFile: path) {

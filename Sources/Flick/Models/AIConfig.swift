@@ -5,12 +5,9 @@ struct AIConfig: Codable, Equatable {
     var baseURL: String
     var apiKey: String
     var model: String
-    /// When true (default), the OpenAI-compatible request body carries
-    /// `reasoning_effort: "minimal"` and `thinking: {"type": "disabled"}`.
-    /// Reasoning-capable models (OpenAI o-series, DeepSeek-V3.1) honour
-    /// these and respond without a `<think>` prelude; non-reasoning models
-    /// (gpt-4o-mini, etc.) ignore unknown fields. Set to false if your
-    /// provider rejects unknown params outright.
+    /// When true (default), request body carries `reasoning_effort: "minimal"` and
+    /// `thinking: {"type": "disabled"}` to suppress the `<think>` prelude on reasoning models
+    /// (OpenAI o-series, DeepSeek-V3.1). Non-reasoning models ignore unknown fields.
     var disableThinking: Bool
 
     static let `default` = AIConfig(
@@ -43,8 +40,7 @@ struct AIConfig: Codable, Equatable {
         self.baseURL = try c.decode(String.self, forKey: .baseURL)
         self.apiKey = try c.decode(String.self, forKey: .apiKey)
         self.model = try c.decode(String.self, forKey: .model)
-        // decodeIfPresent so existing plists written before this field was
-        // introduced still load — they get the safe default of "no thinking".
+        // decodeIfPresent so plists written before this field was introduced still load.
         self.disableThinking = try c.decodeIfPresent(Bool.self, forKey: .disableThinking) ?? true
     }
 }

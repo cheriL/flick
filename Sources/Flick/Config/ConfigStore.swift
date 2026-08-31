@@ -12,9 +12,8 @@ final class ConfigStore {
          keychainService: String = "com.cheriL.flick") {
         self.defaults = defaults
         self.keychainService = keychainService
-        // One-time migration: pull any pre-existing API key out of the
-        // keychain (the old storage path) and persist it together with
-        // the rest of the config in UserDefaults. The keychain entry is
+        // One-time migration: pull the API key out of the keychain (old storage path) and
+        // persist it in UserDefaults alongside the rest of the config. Keychain entry is
         // deleted afterwards so the two stores can't drift.
         migrateKeychainToDefaults()
     }
@@ -35,12 +34,10 @@ final class ConfigStore {
 
     // MARK: - Selection-enabled toggle
 
-    /// Global "allow selection-to-translate" switch. Default ON. The
-    /// monitor reads this each tick (and on change) so the user can
-    /// kill the feature without quitting Flick.
+    //// Global "allow selection-to-translate" switch. Default ON. Monitor reads this each tick so
+    /// the user can kill the feature without quitting Flick.
     var isSelectionEnabled: Bool {
-        // Object lookup (not `bool(forKey:)`) so an absent key returns
-        // the default rather than being coerced to `false`.
+        // Object lookup (not `bool(forKey:)`) so an absent key returns the default.
         (defaults.object(forKey: selectionEnabledKey) as? Bool) ?? true
     }
 
@@ -53,8 +50,8 @@ final class ConfigStore {
 
     private func migrateKeychainToDefaults() {
         guard let key = readKeychain(), !key.isEmpty else { return }
-        // Only seed defaults if there's no existing record; we don't want
-        // to clobber a config the user has since updated.
+        // Only seed defaults if there's no existing record — don't clobber a config the user
+        // has since updated.
         if defaults.data(forKey: defaultsKey) == nil {
             var cfg = AIConfig.default
             cfg.apiKey = key

@@ -4,10 +4,9 @@ import os.log
 
 private let axLog = Logger(subsystem: "com.cheriL.flick", category: "ax")
 
-// ApplicationServices' Swift overlay does not bridge this symbol. Declare
-// the C signature so we can call it from Swift. (The actual C name in the
-// SDK is `AXUIElementCopyParameterizedAttributeValue` — the parameterised
-// sibling of `AXUIElementCopyAttributeValue`.)
+// ApplicationServices' Swift overlay doesn't bridge this symbol — declare the C signature.
+// C name in the SDK is `AXUIElementCopyParameterizedAttributeValue` (parameterised sibling
+// of `AXUIElementCopyAttributeValue`).
 @_silgen_name("AXUIElementCopyParameterizedAttributeValue")
 private func _AXUIElementCopyParameterizedAttributeValue(
     _ element: AXUIElement,
@@ -27,9 +26,8 @@ extension AXUIElement {
     /// application identified by `pid`, or `nil` if unavailable / not text /
     /// the process lacks Accessibility permission.
     static func selectedText(in pid: pid_t) -> String? {
-        // Short-circuit when we know AX will refuse us. Without this the
-        // monitor polls 3x/s producing one kAXErrorAPIDisabled per tick —
-        // noisy in logs and wasteful.
+        // Short-circuit when AX will refuse us — the monitor polls 3x/s and otherwise emits one
+        // kAXErrorAPIDisabled per tick.
         guard AXIsProcessTrusted() else { return nil }
 
         let app = AXUIElementCreateApplication(pid)
@@ -41,14 +39,8 @@ extension AXUIElement {
             kAXFocusedUIElementAttribute as CFString,
             &focusedRef
         )
-        // NSWorkspace.frontmostApplication returns the main Chrome process
-        // (which owns the window), but Chrome's actual AX tree for the
-        // web content lives in a renderer helper process. When the focused
-        // element fetch on the main process fails or returns an empty
-        // role, also try the SystemWide focused-application attribute,
-        // which resolves to the *real* foreground app element — including
-        // helpers for multi-process browsers. And as a last resort, walk
-        // the app's windows and grab the AXWebArea directly.
+        // Multi-process browsers (Chrome etc.): the main app's focused element fails or returns
+        // an empty role, so fall back to SystemWide focused-app and a window walk.
         if focusedStatus != .success || focusedRef == nil {
             axLog.notice("[\(appName, privacy: .public)] focused fetch status=\(focusedStatus.rawValue, privacy: .public), trying fallbacks")
             if let sysResult = selectedTextViaSystemWideFocused() {
@@ -62,10 +54,7 @@ extension AXUIElement {
         let focused = focusedRef as! AXUIElement
         let role = Self.role(of: focused) ?? "?"
 
-        // --- Path A: standard `kAXSelectedTextAttribute`. Works for NSText
-        // views (TextEdit, iTerm2, native macOS text fields like the
-        // Safari address bar). Often returns empty for WKWebView/Safari
-        // web content — Path B handles that.
+        // --- Path A: standard `kAXSelectedTextAttribute` — NSText views (TextEdit, iTerm2, Safari address bar).
         var selectedRef: CFTypeRef?
         let selectedStatus = AXUIElementCopyAttributeValue(
             focused,
@@ -81,31 +70,22 @@ extension AXUIElement {
             return str
         }
 
-        // --- Path B: web content. WKWebView exposes the full visible text
-        // as `kAXValueAttribute` and the selection as a CFRange. Substring
-        // the value with the range. This is the documented approach for
-        // Safari / Chrome pages.
+        // --- Path B: web content. WKWebView exposes full text as `kAXValueAttribute` and selection as a CFRange.
         let bResult = selectedTextViaValuePlusRange(in: focused, log: true)
         if let webStr = bResult {
             axLog.notice("B: HIT len=\(webStr.count, privacy: .public)")
             return webStr
         }
 
-        // --- Path C: deep web content where the focused element is a
-        // higher-level container and the actual selected node is a child
-        // (some Safari web components behave this way).
+        // --- Path C: deep web content where the actual selected node is a child of the focused container.
         let cResult = selectedTextViaRange(in: focused, log: true)
         if let rangeStr = cResult {
             axLog.notice("C: HIT len=\(rangeStr.count, privacy: .public)")
             return rangeStr
         }
 
-        // --- Path D: modern Safari / WKWebView use the TextMarker-based
-        // API. `kAXSelectedTextAttribute` and `kAXValueAttribute` both
-        // return kAXErrorAttributeUnsupported on the AXWebArea, and the
-        // BFS into kAXChildren doesn't reach the actual selected node —
-        // web content exposes selection via an opaque marker range that
-        // must be resolved with a parameterised attribute.
+        // --- Path D: WKWebView exposes selection via an opaque text-marker range that must be resolved
+        // with a parameterised attribute (the BFS into kAXChildren doesn't reach the selected node).
         if let markerStr = selectedTextViaTextMarker(in: focused, log: true) {
             axLog.notice("D: HIT len=\(markerStr.count, privacy: .public)")
             return markerStr
@@ -151,20 +131,15 @@ extension AXUIElement {
               range.location + range.length <= full.utf16.count
         else { return nil }
 
-        // CFRange uses UTF-16 code units (matches the AX API), so slice
-        // via the UTF-16 view and re-bridge back to String.
+        // CFRange uses UTF-16 code units (matches the AX API), so slice via UTF-16 view and bridge back.
         let utf16 = Array(full.utf16)
         let slice = Array(utf16[range.location ..< range.location + range.length])
         return String(utf16CodeUnits: slice, count: slice.count)
     }
 
-    /// Modern Safari / WKWebView expose selection through opaque text
-    /// markers. Pull the marker range via kAXSelectedTextMarkerRangeAttribute,
-    /// then resolve it to a string via the parameterised
-    /// kAXStringForTextMarkerRangeAttribute. The string constants are
-    /// NOT in the macOS SDK headers (the AX framework treats them as
-    /// semi-private), but they are stable, documented behaviour — every
-    /// macOS accessibility tool that handles browser content uses them.
+    /// Modern Safari / WKWebView expose selection through opaque text markers — resolved via
+    /// the parameterised `kAXStringForTextMarkerRangeAttribute` (SDK constants are semi-private
+    /// but stable).
     private static func selectedTextViaTextMarker(in element: AXUIElement, log: Bool = false) -> String? {
         let markerRangeAttr = "AXSelectedTextMarkerRange" as CFString
         let stringForMarkerRangeAttr = "AXStringForTextMarkerRange" as CFString

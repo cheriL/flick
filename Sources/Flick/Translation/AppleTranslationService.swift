@@ -1,15 +1,8 @@
 import Foundation
 import Translation
 
-/// Translation backed by Apple's on-device `Translation` framework.
-///
-/// `session.translate(_:)` must be invoked from inside a SwiftUI view's
-/// `.translationTask` action closure — calling it from arbitrary async
-/// context returns "Unable to Translate" from the framework, which we
-/// surface as `.network(...)`. Flick currently mounts no `.translationTask`
-/// host, so this path always fails; a follow-up will add one (likely via
-/// `MenuBarContent`'s `.glassEffect` modifier path or a dedicated
-/// long-lived SwiftUI view) and rewire this method to delegate through it.
+/// Apple's on-device `Translation` framework. `session.translate(_:)` must run inside a
+/// SwiftUI `.translationTask` — Flick doesn't host one yet, so this path always errors.
 final class AppleTranslationService: TranslationService {
     let displayName = "Apple"
 

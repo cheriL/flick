@@ -18,24 +18,11 @@ final class MenuBarController {
         self.store = store
         self.panel = panel
         self.monitor = TextSelectionMonitor(provider: AXSelectionProvider())
-        // Seed the monitor with the persisted toggle value so the
-        // default-ON behaviour matches what's already in UserDefaults.
+        // Seed the monitor with the persisted toggle so default-ON matches UserDefaults.
         self.monitor.isEnabled = store.isSelectionEnabled
-        // The menu popup is owned by `MenuPanelController`, mirroring
-        // the way `FloatingPanelController` owns the translation
-        // popups. Both popups go through the same `NSPanel` +
-        // `backgroundColor = .clear` + `isOpaque = false` configuration
-        // — Flick's panels are all built on this one architecture, so
-        // adding a new popup or changing the popup look both have one
-        // place to look.
+        // Menu popup mirrors FloatingPanelController's popup architecture.
         self.menuPanel = MenuPanelController(store: store, onQuit: { NSApp.terminate(nil) })
-        // Status item is created here (not lazily in `start`) so we can
-        // configure the icon synchronously. The icon-loading helpers
-        // (`MenuBarIcon.nsImage`) are pure functions of the bundle, so
-        // no async work is needed — but doing this in `start` would
-        // briefly show a placeholder SF Symbol in the menu bar if the
-        // .icns load were slow, which is what we want to avoid for a
-        // accessory app where the menu-bar icon *is* the brand.
+        // Status item is created eagerly so the icon is set before any placeholder can flash.
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         configureStatusItem()
     }
@@ -52,9 +39,7 @@ final class MenuBarController {
         ) { [weak self] _ in
             self?.panel.dismiss()
         }
-        // Live-update the monitor when the user flips the menu-bar
-        // toggle. The menu UI persists the value to UserDefaults and
-        // posts this notification; we just forward it.
+        // Forward the menu-bar toggle notification into the monitor.
         enabledSubscription = NotificationCenter.default.addObserver(
             forName: .flickSelectionEnabledChanged, object: nil, queue: .main
         ) { [weak self] note in
@@ -88,22 +73,15 @@ final class MenuBarController {
             button.image = NSImage(systemSymbolName: "character.bubble.fill",
                                    accessibilityDescription: "Flick")
         }
-        // The `NSStatusItem` button routes its click to `toggleMenu`
-        // (set in `start`). Sending `action` to the button itself means
-        // the standard AppKit status-item click semantics fire — single
-        // click toggles, no need to handle mouse-down ourselves.
+        // Routing the click through `action` gives us standard AppKit status-item toggle semantics.
         button.toolTip = "Flick"
     }
 
     @objc private func toggleMenu() {
-        // If a translation popup is on screen (trigger button waiting
-        // for tap, or result panel showing), the menu takes over — the
-        // user wants the menu, not a half-visible translation panel.
+        // Menu wins over any translation popup — user wants the menu, not a half-visible panel.
         panel.dismiss()
         guard let button = statusItem.button else { return }
-        // `button.frame` is in status-bar window coordinates; convert
-        // to screen so the panel can place itself relative to a known
-        // anchor without further coordinate math.
+        // Convert from status-bar window coords to screen coords for the panel anchor.
         let anchor: NSRect
         if let win = button.window {
             anchor = win.convertToScreen(button.frame)
@@ -122,16 +100,12 @@ final class MenuBarController {
         let isAI = (info["isAI"] as? Bool) ?? false
         let cursor = cursorValue.pointValue
 
-        // Selecting text while the menu is open should dismiss the
-        // menu — the user has clearly moved on from "browse the menu"
-        // to "translate what I just highlighted". Mirrors how
-        // NSPopover menus behave in most Apple apps.
+        // Selection in another app while the menu is open = user moved on. Dismiss menu first.
         menuPanel.hide()
 
         // Show trigger button first; the actual translation happens on tap.
         panel.showTrigger(at: cursor, text: text, isAI: isAI) { [weak self] in
-            // Mark the selection as consumed so ⌘ toggles, flag changes,
-            // or any other event that re-polls won't re-show the trigger
+            // Mark selection consumed so ⌘ toggles / flag changes don't re-show the trigger
             // over the result panel that's about to appear.
             self?.monitor.markConsumed()
             self?.runTranslation(text: text, at: cursor, isAI: isAI)
@@ -140,18 +114,9 @@ final class MenuBarController {
 
     private func runTranslation(text: String, at cursor: CGPoint, isAI: Bool) {
         currentTask?.cancel()
-        // Show the loading state synchronously, in the same runloop tick
-        // as the click that triggered it. This is the call that hides the
-        // trigger panel (via `triggerPanel.orderOut(nil)` inside
-        // `showResult`). If we deferred this into the Task, the trigger
-        // would still be on screen for a beat — long enough for the
-        // global mouse-down monitor to pick up a follow-up click from
-        // the user and dismiss the whole popup before the result ever
-        // appeared.
-        //
-        // The subsequent `.success` / `.failure` updates still go through
-        // the Task because they originate from async translation work
-        // that may complete on a non-main actor.
+        // Show loading synchronously — `showResult` hides the trigger in the same runloop tick
+        // as the click. Deferring into the Task leaves the trigger up long enough for a follow-up
+        // click to dismiss the popup before the result appears.
         panel.showResult(original: text, state: .loading, at: cursor, isAI: isAI, onRetry: { [weak self] in
             self?.runTranslation(text: text, at: cursor, isAI: isAI)
         })

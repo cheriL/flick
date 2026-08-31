@@ -1,24 +1,8 @@
 import SwiftUI
 
-/// Tailscale-style menu-bar row: title + subtitle on the left, custom
-/// pill toggle on the right. Used as the global on/off switch for the
-/// selection-to-translate feature.
-///
-/// Why custom rather than a plain `Toggle`:
-/// 1. `MenuBarExtra` with `.menu` style bridges SwiftUI to NSMenuItems,
-///    where a stock `Toggle` renders as a checkmark — not the look the
-///    brief asked for. We force `.window` style in `App.swift` so this
-///    view gets to render itself.
-/// 2. The visual (rounded pill, color tints, two-line label) is
-///    specific enough that a stock `.switch` style wouldn't match
-///    either.
-///
-/// We deliberately wrap in a `Button` (not a plain tappable view) so
-/// VoiceOver announces it as a button. The custom button style below
-/// suppresses the macOS "selected row" tint that SwiftUI otherwise
-/// applies to buttons inside a `MenuBarExtra` `.window` panel — that
-/// tint is the blue rectangle the user complained about. The pill
-/// already communicates state; we don't need a second visual cue.
+/// Tailscale-style row: title + subtitle on the left, custom pill toggle on the right.
+/// Wrapped in a `Button` for VoiceOver; the custom button style suppresses the system
+/// "selected row" tint (the pill already communicates state).
 struct SelectionToggleRow: View {
     @Binding var isOn: Bool
     var onChange: (Bool) -> Void
@@ -55,10 +39,8 @@ struct SelectionToggleRow: View {
     }
 }
 
-/// Suppresses the system "selected menu row" tint (`Color.accentColor`
-/// rectangle) that `MenuBarExtra` `.window` adds to every Button, and
-/// keeps a subtle press feedback instead. Plain `.plain` isn't enough
-/// — it leaves the focus ring visible on the panel background.
+/// Suppresses the system "selected menu row" tint; keeps a subtle press highlight instead.
+/// Plain `.plain` leaves the focus ring visible.
 struct SelectionToggleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -69,9 +51,8 @@ struct SelectionToggleButtonStyle: ButtonStyle {
     }
 }
 
-/// Standalone pill switch used by `SelectionToggleRow`. Green pill on,
-/// gray pill off, white knob slides between the two ends. Sized to
-/// match the visual weight of the 13pt title beside it.
+/// Standalone pill switch used by `SelectionToggleRow`. Green pill on, gray pill off,
+/// white knob slides between the two ends.
 struct TogglePill: View {
     let isOn: Bool
 

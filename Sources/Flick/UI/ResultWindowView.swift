@@ -13,15 +13,11 @@ struct ResultWindowView: View {
     let onRetry: () -> Void
 
     // MARK: - Test hooks
-    //
-    // SwiftUI renders `Image(systemName:)` into private view classes that
-    // don't expose the symbol name. We expose what each branch would draw
-    // so tests can assert icon selection and accent-bar visibility without
-    // walking the rendered tree.
+    // SwiftUI renders `Image(systemName:)` into private view classes that don't expose the
+    // symbol name — these hooks let tests assert icon selection without walking the tree.
 
-    /// AI loading branch renders an ellipsis-bubble icon (matches the
-    /// trigger button's AI glyph so both surfaces use the same SF Symbol
-    /// family). `nil` for normal mode, which falls back to `ProgressView`.
+    /// AI loading branch renders an ellipsis-bubble icon. `nil` for normal mode, which falls
+    /// back to `ProgressView`.
     var loadingIconName: String? {
         guard isAI else { return nil }
         return "ellipsis.bubble.fill"

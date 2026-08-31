@@ -30,10 +30,8 @@ enum Provider: String, Codable, CaseIterable, Equatable {
             ],
             "temperature": 0.2,
         ]
-        // Suppress chain-of-thought on reasoning-capable providers. Both fields
-        // are silently ignored by non-reasoning models (gpt-4o-mini, deepseek-chat,
-        // qwen-plus, …) but actively disable the `<think>` prelude on
-        // reasoning models (OpenAI o-series, DeepSeek-V3.1).
+        // Both fields are silently ignored by non-reasoning models but disable the `<think>` prelude
+        // on reasoning models (OpenAI o-series, DeepSeek-V3.1).
         if config.disableThinking {
             body["reasoning_effort"] = "minimal"
             body["thinking"] = ["type": "disabled"]
@@ -62,14 +60,11 @@ enum Provider: String, Codable, CaseIterable, Equatable {
         }
     }
 
-    /// Strip `<think>...</think>` blocks (and any unclosed `<think>` opener) from
-    /// reasoning-model output so the user only sees the final translation.
-    /// Models like DeepSeek-R1 and QwQ emit a `<think>` reasoning prelude that
-    /// is not part of the answer.
+    /// Strip `<think>...</think>` blocks (and any unclosed opener) from reasoning-model output so
+    /// the user only sees the final translation.
     static func stripThinkBlocks(_ text: String) -> String {
-        // Match either a balanced `<think>...</think>` (lazy so we don't span
-        // multiple blocks) or an unclosed opener that runs to end of string
-        // (response truncated by max_tokens, etc.).
+        // Match either a balanced `<think>...</think>` (lazy) or an unclosed opener running to
+        // end of string (response truncated by max_tokens).
         let pattern = #"<think>[\s\S]*?(?:</think>|$)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return text
