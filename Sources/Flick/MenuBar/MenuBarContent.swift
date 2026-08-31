@@ -168,10 +168,12 @@ enum PermissionGrant {
 /// to AX. Without it, `AXUIElement` calls into Chrome's web content see no `AXWebArea` and
 /// Flick can't read selected text on web pages.
 enum ChromeLaunch {
+    /// `open -a` reuses an already-running Chrome and silently drops `--args`, so the flag
+    /// never reaches the existing process. Quit first to guarantee a fresh launch.
     static func launchWithAccessibilityFlag() {
         let task = Process()
         task.launchPath = "/bin/sh"
-        task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
+        task.arguments = ["-c", "osascript -e 'quit app \"Google Chrome\"' 2>/dev/null; sleep 0.5; open -a \"Google Chrome\" --args --force-renderer-accessibility"]
         try? task.run()
     }
 }
