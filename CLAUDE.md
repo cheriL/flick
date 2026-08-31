@@ -169,11 +169,26 @@ focused on what the code is *now*.
 - **Commit messages:** conventional-commits subject line + at most one short
   body line. Don't enumerate files, list every fix, or write a changelog —
   `git diff` carries that detail. Skip `Tests:` / `Behaviour:` breakdowns.
-- **Code comments:** explain *why* the current shape exists when it isn't
-  obvious. Do **not** leave "ghost comments" that narrate past failures:
-  no "previous versions tried X but…", no tombstones for deleted features,
-  no post-mortems of approaches that didn't pan out. A one-line pointer
-  to a spec or commit is fine when context is genuinely needed.
+- **Code comments:** **default is no comment.** If reading the code tells
+  you what it does, leave it alone — the compiler, type signature, and
+  SDK docs already cover that. Add a comment only when the code itself
+  *can't* say something the next reader needs:
+  - *Why this branch / API / shape* over an obvious alternative
+    (e.g. a non-obvious perf cliff, an SDK quirk, a hidden invariant)
+  - *Why something that looks refactorable is left alone*
+  - *A pointer* to an external spec, ticket, or commit when context is
+    genuinely needed elsewhere (one line, max)
+
+  Do **not** write:
+  - "this does X" descriptions — the code already says X
+  - "X is required for Y to work" — the compiler / SDK will tell you
+    when you omit it; this is what `GlassEffectContainer` comments
+    usually become
+  - "without X, you'd get Y" failure modes — git history has them
+  - Multi-line block comments restating obvious code, even briefly
+  - "ghost comments" that narrate past failures: "previous versions
+    tried X but…", tombstones for deleted features, post-mortems of
+    approaches that didn't pan out
 
 ## When unsure
 
