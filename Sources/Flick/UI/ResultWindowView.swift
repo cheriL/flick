@@ -16,12 +16,9 @@ struct ResultWindowView: View {
     // SwiftUI renders `Image(systemName:)` into private view classes that don't expose the
     // symbol name — these hooks let tests assert icon selection without walking the tree.
 
-    /// AI loading branch renders an ellipsis-bubble icon. `nil` for normal mode, which falls
-    /// back to `ProgressView`.
-    var loadingIconName: String? {
-        guard isAI else { return nil }
-        return "ellipsis.bubble.fill"
-    }
+    /// Both AI and normal loading use a system `ProgressView`; this hook stays so tests can
+    /// assert the loading branch picks no SF Symbol.
+    var loadingIconName: String? { nil }
 
     /// Label shown in the loading branch.
     var loadingLabel: String { isAI ? "AI 翻译中…" : "翻译中…" }
@@ -50,13 +47,7 @@ struct ResultWindowView: View {
         switch state {
         case .loading:
             HStack(spacing: 8) {
-                if isAI {
-                    Image(systemName: "ellipsis.bubble.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.primary)
-                } else {
-                    ProgressView().controlSize(.small)
-                }
+                ProgressView().controlSize(.small)
                 Text(loadingLabel)
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
