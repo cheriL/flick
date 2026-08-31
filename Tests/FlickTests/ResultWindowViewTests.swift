@@ -3,15 +3,15 @@ import Testing
 
 @Suite @MainActor final class ResultWindowViewTests {
 
-    @Test func aiLoadingUsesEllipsisBubbleIconAndLabel() {
+    @Test func aiLoadingUsesProgressViewAndLabel() {
         let view = ResultWindowView(original: "hi", state: .loading, isAI: true, onRetry: {})
-        #expect(view.loadingIconName == "ellipsis.bubble.fill")
+        #expect(view.loadingIconName == nil)
         #expect(view.loadingLabel == "AI 翻译中…")
     }
 
     @Test func normalLoadingUsesProgressViewAndLabel() {
         let view = ResultWindowView(original: "hi", state: .loading, isAI: false, onRetry: {})
-        #expect(view.loadingIconName == nil)  // ProgressView instead of Image
+        #expect(view.loadingIconName == nil)
         #expect(view.loadingLabel == "翻译中…")
     }
 
