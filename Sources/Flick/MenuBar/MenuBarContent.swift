@@ -15,8 +15,6 @@ struct MenuBarContent: View {
     @State private var selectionEnabled: Bool = true
 
     var body: some View {
-        // `GlassEffectContainer` is required for `.glassEffect` to sample wallpaper; bare
-        // modifiers render only as a tint.
         GlassEffectContainer(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 content
