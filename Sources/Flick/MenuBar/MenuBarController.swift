@@ -68,12 +68,10 @@ final class MenuBarController {
 
     private func configureStatusItem() {
         guard let button = statusItem.button else { return }
-        if let icon = MenuBarIcon.nsImage() {
-            button.image = icon
-        } else {
-            button.image = NSImage(systemSymbolName: "character.bubble.fill",
-                                   accessibilityDescription: "Flick")
-        }
+        button.image = NSImage(systemSymbolName: "f.square.fill",
+                               accessibilityDescription: "Flick")
+        // `NSImage(systemSymbolName:)` defaults to `isTemplate = true`, so the menu bar
+        // renders the glyph as a monochrome mask against light/dark backgrounds.
         // Routing the click through `action` gives us standard AppKit status-item toggle semantics.
         button.toolTip = "Flick"
     }

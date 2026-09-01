@@ -3,8 +3,8 @@ import Testing
 
 @Suite @MainActor final class TriggerButtonViewTests {
 
-    @Test func iconResourceNameMatchesBundle() {
+    @Test func iconSystemNameMatches() {
         let view = TriggerButtonView(onTap: {})
-        #expect(view.iconResourceName == "Flick")
+        #expect(view.iconSystemName == "f.square.fill")
     }
 }
