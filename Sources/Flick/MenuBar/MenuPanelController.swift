@@ -118,7 +118,7 @@ final class MenuPanelController {
             screen.maxX - panelSize.width - 8
         )
 
-        let originY = button.minY - panelSize.height - 1
+        let originY = button.minY - panelSize.height
         panel.setFrameOrigin(NSPoint(x: clampedX, y: originY))
     }
 
