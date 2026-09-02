@@ -17,16 +17,19 @@ struct TranslatePanelContent: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            inputArea
-            controlRow
-            if !isIdle {
-                Divider().padding(.vertical, 8)
-                resultArea
+        GlassEffectContainer(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                inputArea
+                controlRow
+                if !isIdle {
+                    Divider().padding(.vertical, 8)
+                    resultArea
+                }
             }
+            .padding(12)
+            .frame(width: 320)
+            .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
-        .padding(12)
-        .frame(width: 320)
         .onDisappear { task?.cancel() }
     }
 
@@ -43,26 +46,13 @@ struct TranslatePanelContent: View {
     }
 
     private var inputArea: some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: $input)
-                .font(.body)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-            if input.isEmpty {
-                Text("输入原文")
-                    .font(.body)
-                    .foregroundStyle(.tertiary)
-                    .padding(.leading, 5)
-                    .padding(.top, 8)
-                    .allowsHitTesting(false)
-            }
-        }
-        .frame(minHeight: 80, maxHeight: 160)
-        .background(Color.primary.opacity(0.05))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-        )
+        TranslateTextView(text: $input)
+            .frame(minHeight: 80, maxHeight: 160)
+            .background(Color.primary.opacity(0.05))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+            )
     }
 
     private var controlRow: some View {
@@ -142,4 +132,47 @@ enum TranslateState: Equatable {
     case loading(String)
     case success(String)
     case failure(String)
+}
+
+/// SwiftUI's `TextEditor` doesn't promote its underlying `NSTextView` to first
+/// responder when hosted in an NSPanel — the hosting controller sits between
+/// the window and the SwiftUI-rendered text view in the responder chain.
+private struct TranslateTextView: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        textView.delegate = context.coordinator
+        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.textContainerInset = NSSize(width: 5, height: 8)
+        textView.string = text
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView, let window = textView.window else { return }
+            window.makeFirstResponder(textView)
+        }
+        return scrollView
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? NSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        let parent: TranslateTextView
+        init(_ parent: TranslateTextView) { self.parent = parent }
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+        }
+    }
 }

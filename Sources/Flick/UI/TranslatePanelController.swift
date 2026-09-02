@@ -21,9 +21,9 @@ final class TranslatePanelController {
         self.menuPanel = menuPanel
         self.statusItem = statusItem
 
-        let p = NSPanel(
+        let p = KeyablePanel(
             contentRect: .zero,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -63,8 +63,32 @@ final class TranslatePanelController {
         statusItemAnchor = statusItemFrame
         sizePanelToContent()
         positionPanel()
-        panel.orderFrontRegardless()
+        // An LSUIElement app can't promote a window to key on its own — the
+        // window manager refuses because the app isn't on the active-app list.
+        // `NSApp.activate` here briefly raises the app so the next
+        // `makeKeyAndOrderFront` actually takes.
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+        // Re-focus the input field after layout — `makeNSView` only fires once.
+        DispatchQueue.main.async { [weak self] in
+            self?.focusFirstTextView()
+        }
         installMonitors()
+    }
+
+    private func focusFirstTextView() {
+        guard let root = panel.contentView else { return }
+        Self.focusFirstTextView(in: root)
+    }
+
+    private static func focusFirstTextView(in view: NSView) {
+        if let textView = view as? NSTextView, textView.isEditable {
+            view.window?.makeFirstResponder(textView)
+            return
+        }
+        for sub in view.subviews {
+            focusFirstTextView(in: sub)
+        }
     }
 
     private func sizePanelToContent() {
@@ -116,6 +140,13 @@ final class TranslatePanelController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
+    }
+
+    /// NSPanel's default `canBecomeKey` is false (it inherits from the menu-style contract),
+    /// so even after `NSApp.activate` + `makeKeyAndOrderFront` the window manager refuses to
+    /// promote it — and the first responder never reaches the text view.
+    private final class KeyablePanel: NSPanel {
+        override var canBecomeKey: Bool { true }
     }
 
     private func installMonitors() {
