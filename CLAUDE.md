@@ -75,6 +75,16 @@ before chasing behaviour that has a known cause.
   budget; see `bfs(from:maxNodes:maxDepth:)` in
   `AXUIElement+Selection.swift` for the working version.
 
+- **NSPanel's default `canBecomeKey` is false.** Subclass and override to
+  return `true` — `NSApp.activate` + `makeKeyAndOrderFront` alone isn't
+  enough in an `LSUIElement` app. See `TranslatePanelController.KeyablePanel`.
+
+- **NSTextView's field editor hides first-responder state.** AppKit
+  inserts an `NSText` between window and view, so
+  `window.firstResponder === textView` is always false. Subclass and
+  override `becomeFirstResponder` / `resignFirstResponder` to observe
+  focus reliably.
+
 ## Project layout
 
 ```
@@ -89,6 +99,8 @@ Sources/Flick/
     PanelPositioning.swift              # cursor-to-screen anchoring
     ResultWindowView.swift              # loading/success/failure content
     ResultPanelChrome.swift             # rounded white background + shadow
+    TranslatePanelController.swift      # menu-bar manual-translate panel host
+    TranslatePanelContent.swift         # SwiftUI view for the manual panel
   Translation/
     Provider.swift                      # enum: apple / openai
     AppleTranslationService.swift       # on-device Translation framework
@@ -160,14 +172,9 @@ scripts/build-app.sh, build-dmg.sh, start-chrome.sh
 - Branch from `master`. Keep unrelated changes on separate branches.
 - Before committing, read your diff. The user has trimmed README
   contents several times — don't silently re-add material they've removed.
-- **Before committing, audit `git diff` for comment bloat.** Sweep every
-  staged line for: redundant comments ("this does X" / SDK behaviour
-  descriptions), ghost comments (past-failure narration, tombstones
-  for deleted features), and "without X, you'd get Y" failure modes.
-  Default is no comment — remove anything that doesn't survive the
-  "Writing style" rule's reverse check. Doing this once *after* writing
-  the change catches the patterns the rule's prose alone doesn't
-  internalise.
+- Before committing, audit `git diff` against the "Writing style" rule's
+  reverse check (default no comment, no ghost comments, no "without X
+  you'd get Y" failure modes).
 
 ## Writing style: short & current
 
@@ -188,15 +195,10 @@ focused on what the code is *now*.
     genuinely needed elsewhere (one line, max)
 
   Do **not** write:
-  - "this does X" descriptions — the code already says X
-  - "X is required for Y to work" — the compiler / SDK will tell you
-    when you omit it; this is what `GlassEffectContainer` comments
-    usually become
+  - Code-restating descriptions ("this does X", "X is required for Y")
   - "without X, you'd get Y" failure modes — git history has them
-  - Multi-line block comments restating obvious code, even briefly
-  - "ghost comments" that narrate past failures: "previous versions
-    tried X but…", tombstones for deleted features, post-mortems of
-    approaches that didn't pan out
+  - "ghost comments" narrating past failures or tombstones for
+    deleted features
 
 ## When unsure
 
