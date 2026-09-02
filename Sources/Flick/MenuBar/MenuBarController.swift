@@ -113,6 +113,11 @@ final class MenuBarController {
     // MARK: - Private
 
     private func handle(_ note: Notification) {
+        // User is in the manual translate panel — selecting text inside its
+        // input field (or anywhere while it's up) is part of the manual flow
+        // and shouldn't fire the auto-translate popup or dismiss the panel.
+        if translatePanel.isVisible { return }
+
         guard let info = note.userInfo,
               let text = info["text"] as? String,
               let cursorValue = info["cursor"] as? NSValue else { return }
@@ -120,7 +125,6 @@ final class MenuBarController {
 
         // Selection in another app while the menu is open = user moved on. Dismiss menu first.
         menuPanel.hide()
-        translatePanel.hide()
 
         // Show trigger button first; the actual translation happens on tap.
         panel.showTrigger(at: cursor, text: text) { [weak self] in
