@@ -2,11 +2,11 @@ import SwiftUI
 
 struct TranslatePanelContent: View {
     let onTranslate: (String, Locale.Language) async throws -> String
+    let onTaskStart: (Task<Void, Never>) -> Void
 
     @State private var input: String = ""
     @State private var targetCode: String = "en"
     @State private var state: TranslateState = .idle
-    @State private var task: Task<Void, Never>?
 
     private static let languages: [(code: String, label: String)] = [
         ("en", "English"),
@@ -30,7 +30,6 @@ struct TranslatePanelContent: View {
             .frame(width: 320)
             .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
-        .onDisappear { task?.cancel() }
     }
 
     private var isIdle: Bool {
@@ -111,8 +110,7 @@ struct TranslatePanelContent: View {
         guard !text.isEmpty else { return }
         let target = Locale.Language(identifier: targetCode)
         state = .loading(text)
-        task?.cancel()
-        task = Task {
+        let task = Task {
             do {
                 let result = try await onTranslate(text, target)
                 if Task.isCancelled { return }
@@ -124,6 +122,7 @@ struct TranslatePanelContent: View {
                 await MainActor.run { state = .failure(msg) }
             }
         }
+        onTaskStart(task)
     }
 }
 

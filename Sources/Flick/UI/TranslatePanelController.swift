@@ -29,15 +29,8 @@ final class TranslatePanelController {
         )
         self.panel = p
         configure(p)
-
-        let content = TranslatePanelContent(onTranslate: { [weak self] text, target in
-            guard let self else { throw CancellationError() }
-            let service = OpenAICompatibleService(config: self.store.load())
-            return try await service.translate(text, to: target)
-        })
-        let host = NSHostingController(rootView: content)
-        self.hostingController = host
-        p.contentViewController = host
+        // Hosting controller is rebuilt on every show() so the panel's `@State`
+        // (input / targetCode / in-flight task) starts fresh each open.
     }
 
     deinit { stopMonitors() }
@@ -57,10 +50,33 @@ final class TranslatePanelController {
     func hide() {
         panel.orderOut(nil)
         stopMonitors()
+        inFlightTask?.cancel()
+        inFlightTask = nil
     }
+
+    private var inFlightTask: Task<Void, Never>?
 
     private func show(statusItemFrame: NSRect) {
         statusItemAnchor = statusItemFrame
+        // Cancel any task left running from a prior show before the view that
+        // owned it gets torn down by the rebuild below.
+        inFlightTask?.cancel()
+        inFlightTask = nil
+
+        let content = TranslatePanelContent(
+            onTranslate: { [weak self] text, target in
+                guard let self else { throw CancellationError() }
+                let service = OpenAICompatibleService(config: self.store.load())
+                return try await service.translate(text, to: target)
+            },
+            onTaskStart: { [weak self] task in
+                self?.inFlightTask = task
+            }
+        )
+        let host = NSHostingController(rootView: content)
+        self.hostingController = host
+        panel.contentViewController = host
+
         sizePanelToContent()
         positionPanel()
         // An LSUIElement app can't promote a window to key on its own — the
