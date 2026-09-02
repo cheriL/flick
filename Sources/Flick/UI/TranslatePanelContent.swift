@@ -48,10 +48,6 @@ struct TranslatePanelContent: View {
         TranslateTextView(text: $input)
             .frame(minHeight: 80, maxHeight: 160)
             .background(Color.primary.opacity(0.05))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-            )
     }
 
     private var controlRow: some View {
@@ -142,12 +138,15 @@ private struct TranslateTextView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = false
         textView.delegate = context.coordinator
         textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         textView.drawsBackground = false
         textView.isRichText = false
         textView.allowsUndo = true
+        textView.focusRingType = .none
         textView.textContainerInset = NSSize(width: 5, height: 8)
         textView.string = text
         DispatchQueue.main.async { [weak textView] in
