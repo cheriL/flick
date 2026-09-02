@@ -5,6 +5,7 @@ import Combine
 
 struct MenuBarContent: View {
     let store: ConfigStore
+    let onOpenTranslate: () -> Void
     let onQuit: () -> Void
 
     /// Re-checked while the menu is visible via a 1 Hz Combine timer started in `.onAppear`.
@@ -59,6 +60,9 @@ struct MenuBarContent: View {
 
         actionButton("启动 Chrome (辅助模式)") {
             ChromeLaunch.launchWithAccessibilityFlag()
+        }
+        actionButton("翻译…") {
+            onOpenTranslate()
         }
         actionButton("设置…") {
             AISettingsWindow.show(store: store)
