@@ -64,12 +64,17 @@ final class FloatingPanelController {
         resultActive = true
     }
 
+    /// Notified when `dismiss()` runs, after panels are hidden and monitors are
+    /// torn down. Set once by the owning controller.
+    var onDismiss: (() -> Void)?
+
     func dismiss() {
         triggerPanel.orderOut(nil)
         resultPanel.orderOut(nil)
         triggerActive = false
         resultActive = false
         stopMonitors()
+        onDismiss?()
     }
 
     // MARK: - Test hooks
