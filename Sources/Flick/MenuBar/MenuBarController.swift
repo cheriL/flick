@@ -47,6 +47,10 @@ final class MenuBarController {
             let enabled = (note.userInfo?["enabled"] as? Bool) ?? self?.store.isSelectionEnabled ?? true
             self?.monitor.isEnabled = enabled
         }
+        // Cancel the in-flight Task so the result doesn't pop back up after dismissal mid-loading.
+        panel.onDismiss = { [weak self] in
+            self?.currentTask?.cancel()
+        }
         statusItem.button?.target = self
         statusItem.button?.action = #selector(toggleMenu)
     }
@@ -127,6 +131,7 @@ final class MenuBarController {
                 let translated = try await service.translate(text, to: target)
                 if Task.isCancelled { return }
                 await MainActor.run {
+                    if Task.isCancelled { return }
                     self.panel.showResult(original: text, state: .success(translated), at: cursor, onRetry: { [weak self] in
                         self?.runTranslation(text: text, at: cursor)
                     })
@@ -135,6 +140,7 @@ final class MenuBarController {
                 if Task.isCancelled { return }
                 let msg = (error as? TranslationError)?.errorDescription ?? error.localizedDescription
                 await MainActor.run {
+                    if Task.isCancelled { return }
                     self.panel.showResult(original: text, state: .failure(msg), at: cursor, onRetry: { [weak self] in
                         self?.runTranslation(text: text, at: cursor)
                     })

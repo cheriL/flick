@@ -81,4 +81,12 @@ import AppKit
         #expect(controller.resultAppearanceForTesting == nil,
                 "result panel must inherit system appearance, not be pinned; got \(String(describing: controller.resultAppearanceForTesting))")
     }
+
+    @Test func dismissInvokesOnDismiss() {
+        let controller = FloatingPanelController()
+        var called = 0
+        controller.onDismiss = { called += 1 }
+        controller.dismiss()
+        #expect(called == 1)
+    }
 }
