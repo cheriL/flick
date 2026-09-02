@@ -6,6 +6,7 @@ import SwiftUI
 final class MenuPanelController {
     private let store: ConfigStore
     private let onQuit: () -> Void
+    var onOpenTranslate: () -> Void = {}
     private let panel: NSPanel
     // `var` because the hosting controller's onQuit captures `self`, which Swift forbids
     // before all `let` fields are set.
@@ -34,10 +35,17 @@ final class MenuPanelController {
         // TCC timer, `isTrusted`, `selectionEnabled`) survives. `onQuit` is captured strongly:
         // the panel's job is to hide itself before app-quit runs.
         let quitHandler = onQuit
-        let content = MenuBarContent(store: store, onQuit: { [weak self] in
-            self?.hide()
-            quitHandler()
-        })
+        let content = MenuBarContent(
+            store: store,
+            onOpenTranslate: { [weak self] in
+                self?.hide()
+                self?.onOpenTranslate()
+            },
+            onQuit: { [weak self] in
+                self?.hide()
+                quitHandler()
+            }
+        )
         let host = NSHostingController(rootView: content)
         self.hostingController = host
         panel.contentViewController = host
