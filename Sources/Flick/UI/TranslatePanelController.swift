@@ -74,6 +74,11 @@ final class TranslatePanelController {
             }
         )
         let host = NSHostingController(rootView: content)
+        // The hosting controller's view defaults to an opaque window-background fill
+        // (dark in dark mode); outside the rounded glass shape it would appear as a
+        // black border around the panel. Clear it so the corners blend with the desktop.
+        host.view.wantsLayer = true
+        host.view.layer?.backgroundColor = NSColor.clear.cgColor
         self.hostingController = host
         panel.contentViewController = host
 

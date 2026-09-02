@@ -142,8 +142,10 @@ private struct TranslateTextView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        scrollView.drawsBackground = false
         textView.delegate = context.coordinator
         textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.drawsBackground = false
         textView.isRichText = false
         textView.allowsUndo = true
         textView.textContainerInset = NSSize(width: 5, height: 8)
