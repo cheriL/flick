@@ -62,11 +62,13 @@ before chasing behaviour that has a known cause.
   to translate WeChat/Feishu text, they should paste it into Chrome
   (which is AX-visible) or a different tool.
 
-- **Chromium / Electron apps need `AXManualAccessibility`.** Apps built
-  on Chromium only build their full accessibility tree when an
-  assistive client asks. Setting `AXManualAccessibility = true` on
-  their `AXUIElement` is the documented opt-in. Use it sparingly —
-  it is sticky and asking once per process is enough.
+- **Chromium / Electron apps need `--force-renderer-accessibility` at startup.**
+  Chromium only builds the AX tree for web content when the flag is set when the
+  process launches. macOS's `AXManualAccessibility` attribute is honoured by
+  WebKit (Safari) but ignored by Chromium at runtime — `AXUIElementSetAttributeValue`
+  succeeds without error yet does not retroactively build the tree.
+  `scripts/start-chrome.sh` and the menu-bar "启动 Chrome (辅助模式)" button
+  launch Chrome with the flag.
 
 - **`for _ in 0..<maxDepth` around a queue pop is a bug, not a depth
   limit.** It caps the number of *iterations* (and so nodes examined),
