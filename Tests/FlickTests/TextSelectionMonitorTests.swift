@@ -15,6 +15,18 @@ final class FakeProvider: SelectionProvider {
 }
 
 @Suite(.serialized) final class TextSelectionMonitorTests {
+    /// The monitor's Timer lives on RunLoop.main, which swift-testing does not
+    /// service, so the test pumps it via MainActor.run to keep ticks on the
+    /// main thread.
+    private func pumpMainRunLoop(for duration: TimeInterval) async {
+        let deadline = Date().addingTimeInterval(duration)
+        while Date() < deadline {
+            await MainActor.run {
+                RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
+            }
+        }
+    }
+
     @Test func postsNotificationWhenSelectionChanges() async {
         let fake = FakeProvider()
         fake.queue = [("hello", 1234), ("hello", 1234), ("world", 1234)]
@@ -29,7 +41,7 @@ final class FakeProvider: SelectionProvider {
                 }
             }
             monitor.start()
-            try? await Task.sleep(for: .milliseconds(500))
+            await pumpMainRunLoop(for: 0.5)
             monitor.stop()
             NotificationCenter.default.removeObserver(token)
         }
@@ -49,7 +61,7 @@ final class FakeProvider: SelectionProvider {
             forName: .flickSelectionChanged, object: nil, queue: nil
         ) { _ in posts += 1 }
         monitor.start()
-        try? await Task.sleep(for: .milliseconds(200))
+        await pumpMainRunLoop(for: 0.2)
         monitor.stop()
         NotificationCenter.default.removeObserver(token)
         #expect(posts == 1)
@@ -69,7 +81,7 @@ final class FakeProvider: SelectionProvider {
                 }
             }
             monitor.start()
-            try? await Task.sleep(for: .milliseconds(500))
+            await pumpMainRunLoop(for: 0.5)
             monitor.stop()
             NotificationCenter.default.removeObserver(token)
         }
