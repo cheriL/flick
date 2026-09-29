@@ -29,7 +29,6 @@ enum Provider: String, Codable, CaseIterable, Equatable {
             "messages": [
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.2,
         ]
         // Both fields are silently ignored by non-reasoning models but disable the `<think>` prelude
         // on reasoning models (OpenAI o-series, DeepSeek-V3.1).
