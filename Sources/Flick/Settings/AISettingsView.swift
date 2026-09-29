@@ -24,7 +24,8 @@ struct AISettingsView: View {
             sectionHeader("模型配置")
 
             VStack(alignment: .leading, spacing: 10) {
-                configField("Base URL", text: $draft.baseURL)
+                configField("Base URL", text: $draft.baseURL,
+                            placeholder: "https://api.openai.com/v1")
                 configField("API Key", text: $draft.apiKey, secure: true)
                 configField("Model", text: $draft.model)
 
@@ -117,17 +118,18 @@ struct AISettingsView: View {
     /// One row of the config table. Frame is applied to the leaf `TextField` (not a wrapping
 /// `Group`) so a long URL doesn't stretch the row.
     @ViewBuilder
-    private func configField(_ label: String, text: Binding<String>, secure: Bool = false) -> some View {
+    private func configField(_ label: String, text: Binding<String>, secure: Bool = false,
+                             placeholder: String = "") -> some View {
         HStack(spacing: 12) {
             Text(label)
                 .frame(width: 80, alignment: .trailing)
                 .foregroundStyle(.primary)
             if secure {
-                SecureField("", text: text)
+                SecureField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 268, height: 22)
             } else {
-                TextField("", text: text)
+                TextField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 268, height: 22)
             }
