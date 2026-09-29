@@ -36,15 +36,11 @@ struct AISettingsView: View {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    if let r = testResult {
-                        Text(r)
-                            .font(.caption)
-                            .foregroundStyle(r.hasPrefix("✓") ? .green : .red)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Spacer()
-                    }
+                    SelectableText(
+                        text: testResult ?? "",
+                        color: testResult.map { $0.hasPrefix("✓") ? Color.green : Color.red } ?? .primary
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(.horizontal, 20)
@@ -159,5 +155,66 @@ struct AISettingsView: View {
     private func save() {
         store.save(draft)
         onDismiss()
+    }
+}
+
+/// Read-only selectable text backed by AppKit — SwiftUI's `.textSelection(.enabled)`
+/// drops click hit-testing on macOS 26 after the view is re-inserted or focus moves.
+/// Content beyond the height cap scrolls instead of stretching the window.
+private struct SelectableText: NSViewRepresentable {
+    let text: String
+    let color: Color
+
+    // .caption
+    private static let font = NSFont.systemFont(ofSize: 12)
+    // ≈5 caption lines
+    private static let maxHeight: CGFloat = 80
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.focusRingType = .none
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+        textView.autoresizingMask = [.width]
+
+        let scroll = NSScrollView()
+        scroll.documentView = textView
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let textView = scroll.documentView as? NSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+            textView.sizeToFit()
+        }
+        textView.font = Self.font
+        textView.textColor = NSColor(color)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width.isFinite, width > 0,
+              let textView = scroll.documentView as? NSTextView else { return nil }
+        if textView.string != text {
+            textView.string = text
+            textView.sizeToFit()
+        }
+        guard !text.isEmpty else { return CGSize(width: width, height: 0) }
+        let container = textView.textContainer!
+        container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        let layout = textView.layoutManager!
+        layout.ensureLayout(for: container)
+        let natural = max(layout.usedRect(for: container).height, 14)
+        return CGSize(width: width, height: ceil(min(natural, Self.maxHeight)))
     }
 }

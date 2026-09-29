@@ -47,6 +47,11 @@ before chasing behaviour that has a known cause.
   so a Base URL without `/v1` hits the host root and 404s. This is the
   OpenAI-SDK convention by design — don't reintroduce auto-appending `/v1`.
 
+- **SwiftUI `.textSelection(.enabled)` is unreliable on macOS 26.** After the
+  view is re-inserted or window focus moves, click hit-testing silently dies.
+  Back read-only selectable text with `NSTextView` — see `SelectableText` in
+  `AISettingsView.swift`.
+
 - **Multi-display anchoring.** Never use `NSScreen.main` to pick the
   panel's display rect. Flick is a menu-bar accessory and never becomes
   key, so `NSScreen.main` always resolves to the primary (built-in)
