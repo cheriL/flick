@@ -29,6 +29,17 @@ struct AISettingsView: View {
                 configField("API Key", text: $draft.apiKey, secure: true)
                 configField("Model", text: $draft.model)
 
+                HStack(spacing: 12) {
+                    Text("深度思考")
+                        .frame(width: 80, alignment: .trailing)
+                        .foregroundStyle(.primary)
+                    Toggle("", isOn: Binding(
+                        get: { !draft.disableThinking },
+                        set: { draft.disableThinking = !$0 }
+                    ))
+                    .labelsHidden()
+                }
+
                 HStack(alignment: .top, spacing: 12) {
                     Button("测试连接") { runTest() }
                         .disabled(isTesting || draft.apiKey.isEmpty)
