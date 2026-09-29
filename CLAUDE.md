@@ -42,6 +42,11 @@ Do not auto-launch first. This is a recorded project constraint.
 These are real bugs / design constraints future work has hit. Refer to them
 before chasing behaviour that has a known cause.
 
+- **Base URL carries the version prefix (`…/v1`).** The endpoint builder
+  appends only `/chat/completions` (see `Provider.endpoint(forBaseURL:)`),
+  so a Base URL without `/v1` hits the host root and 404s. This is the
+  OpenAI-SDK convention by design — don't reintroduce auto-appending `/v1`.
+
 - **Multi-display anchoring.** Never use `NSScreen.main` to pick the
   panel's display rect. Flick is a menu-bar accessory and never becomes
   key, so `NSScreen.main` always resolves to the primary (built-in)
