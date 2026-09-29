@@ -29,14 +29,14 @@ final class OpenAICompatibleService: TranslationService {
         let langName = Locale(identifier: target.maximalIdentifier)
             .localizedString(forLanguageCode: target.maximalIdentifier)
             ?? target.maximalIdentifier
-        let prompt = """
-        Translate the following text into \(langName). \
-        Only output the translation, no explanation, no quotes.
-
-        \(text)
+        let system = """
+        Translate the user's text into \(langName). \
+        Output only the translation: no explanation, no quotes. \
+        Preserve the original line breaks. \
+        Keep code, URLs, and proper nouns unchanged.
         """
 
-        let request = try config.provider.makeRequest(config: config, prompt: prompt)
+        let request = try config.provider.makeRequest(config: config, system: system, user: text)
 
         let data: Data
         let response: URLResponse

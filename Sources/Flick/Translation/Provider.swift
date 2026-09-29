@@ -16,7 +16,7 @@ enum Provider: String, Codable, CaseIterable, Equatable {
 
     // MARK: - Request body
 
-    func makeRequest(config: AIConfig, prompt: String) throws -> URLRequest {
+    func makeRequest(config: AIConfig, system: String, user: String) throws -> URLRequest {
         guard let url = endpoint(forBaseURL: config.baseURL) else {
             throw TranslationError.network("invalid base URL: \(config.baseURL)")
         }
@@ -27,9 +27,9 @@ enum Provider: String, Codable, CaseIterable, Equatable {
         var body: [String: Any] = [
             "model": config.model,
             "messages": [
-                ["role": "user", "content": prompt]
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
             ],
-            "temperature": 0.2,
         ]
         // Both fields are silently ignored by non-reasoning models but disable the `<think>` prelude
         // on reasoning models (OpenAI o-series, DeepSeek-V3.1).
