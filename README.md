@@ -13,6 +13,14 @@ One-click translation for selected text on macOS.
 - macOS 26+
 - Accessibility permission (System Settings → Privacy & Security → Accessibility)
 
+## Installation
+
+If macOS reports Flick as damaged on first launch (the app is unsigned), run:
+
+```bash
+/usr/bin/xattr -cr /Applications/Flick.app
+```
+
 ## License
 
 [GPL-3.0](LICENSE)

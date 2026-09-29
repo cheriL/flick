@@ -13,6 +13,14 @@ macOS 选词一键翻译。
 - macOS 26+
 - 辅助功能权限（系统设置 → 隐私与安全 → 辅助功能）
 
+## 安装
+
+首次打开若提示「已损坏」（应用未签名），执行：
+
+```bash
+/usr/bin/xattr -cr /Applications/Flick.app
+```
+
 ## 协议
 
 [GPL-3.0](LICENSE)

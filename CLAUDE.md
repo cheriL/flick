@@ -181,8 +181,10 @@ directory than the view, so don't grep only the view's own folder):
 - `release.yml` triggers on `v*` tag push and `workflow_dispatch`. It runs
   `./scripts/build-app.sh`, `./scripts/build-dmg.sh`, then uploads the DMG
   to the GitHub release via `softprops/action-gh-release@v2`.
-- DMG is **unsigned**. First launch will show a Gatekeeper warning; users
-  right-click → Open. Notarization is deferred until the project has a
+- DMG is **unsigned**. Gatekeeper reports quarantined downloads as
+  "damaged"; users run `/usr/bin/xattr -cr /Applications/Flick.app`
+  (full path — third-party `xattr` in PATH lacks `-r`). Both READMEs
+  document this. Notarization is deferred until the project has a
   Developer ID. Don't add signing/notarization steps without the
   associated secrets.
 - Branch protection on `master` does **not** block tag pushes — you can
