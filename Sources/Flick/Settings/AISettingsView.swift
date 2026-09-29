@@ -21,29 +21,29 @@ struct AISettingsView: View {
     var body: some View {
         // Flat VStack with bold `Text` headers — no `Form` / `Section` containers.
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("OpenAI")
+            sectionHeader("模型配置")
 
             VStack(alignment: .leading, spacing: 10) {
                 configField("Base URL", text: $draft.baseURL)
                 configField("API Key", text: $draft.apiKey, secure: true)
-                configField("模型", text: $draft.model)
+                configField("Model", text: $draft.model)
 
-                HStack {
-                    Spacer()
+                HStack(alignment: .top, spacing: 12) {
+                    Button("测试连接") { runTest() }
+                        .disabled(isTesting || draft.apiKey.isEmpty)
                     if isTesting {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    Button("测试连接") { runTest() }
-                        .disabled(isTesting || draft.apiKey.isEmpty)
-                }
-
-                if let r = testResult {
-                    Text(r)
-                        .font(.caption)
-                        .foregroundStyle(r.hasPrefix("✓") ? .green : .red)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let r = testResult {
+                        Text(r)
+                            .font(.caption)
+                            .foregroundStyle(r.hasPrefix("✓") ? .green : .red)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Spacer()
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -53,14 +53,21 @@ struct AISettingsView: View {
             sectionHeader("通用")
 
             VStack(alignment: .leading, spacing: 8) {
-                Toggle("开机自启动", isOn: Binding(
-                    get: { autoStartEnabled },
-                    set: { newValue in setAutoStart(newValue) }
-                ))
+                HStack(spacing: 12) {
+                    Text("开机自启动")
+                        .frame(width: 80, alignment: .trailing)
+                        .foregroundStyle(.primary)
+                    Toggle("", isOn: Binding(
+                        get: { autoStartEnabled },
+                        set: { newValue in setAutoStart(newValue) }
+                    ))
+                    .labelsHidden()
+                }
                 if let err = autoStartError {
                     Text(err)
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .padding(.leading, 92)
                 }
             }
             .padding(.horizontal, 20)
