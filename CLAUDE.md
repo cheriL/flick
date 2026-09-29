@@ -126,6 +126,17 @@ scripts/build-app.sh, build-dmg.sh, start-chrome.sh
 .github/workflows/release.yml
 ```
 
+View hosting (view → host controller; the host often lives in a different
+directory than the view, so don't grep only the view's own folder):
+
+- `AISettingsView` → `AISettingsWindow` (`MenuBar/MenuBarContent.swift`) —
+  standalone `NSWindow`, one instance reused across opens
+- `MenuBarContent` → `MenuPanelController` (`MenuBar/MenuPanelController.swift`) —
+  status-item popup `NSPanel`
+- `TranslatePanelContent` → `TranslatePanelController` (`UI/TranslatePanelController.swift`)
+- `TriggerButtonView` / `ResultWindowView` → `FloatingPanelController`
+  (`UI/FloatingPanelController.swift`) — near-cursor panel
+
 ## Hard constraints (do not violate without an explicit ask)
 
 - **OpenAI-compatible API only.** Claude/Anthropic was removed earlier and
