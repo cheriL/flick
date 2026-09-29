@@ -29,14 +29,21 @@ struct AISettingsView: View {
                 configField("模型", text: $draft.model)
 
                 HStack {
-                    if let r = testResult {
-                        Text(r)
-                            .font(.caption)
-                            .foregroundStyle(r.hasPrefix("✓") ? .green : .red)
-                    }
                     Spacer()
+                    if isTesting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                     Button("测试连接") { runTest() }
                         .disabled(isTesting || draft.apiKey.isEmpty)
+                }
+
+                if let r = testResult {
+                    Text(r)
+                        .font(.caption)
+                        .foregroundStyle(r.hasPrefix("✓") ? .green : .red)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(.horizontal, 20)
