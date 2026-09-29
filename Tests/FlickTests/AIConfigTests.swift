@@ -6,7 +6,7 @@ import Testing
     @Test func defaultConfig() {
         let cfg = AIConfig.default
         #expect(cfg.provider == .openai)
-        #expect(cfg.baseURL == "https://api.openai.com")
+        #expect(cfg.baseURL == "https://api.openai.com/v1")
         #expect(cfg.apiKey == "")
         #expect(cfg.model == "gpt-4o-mini")
         // Default behaviour: suppress reasoning — keeps simple translations

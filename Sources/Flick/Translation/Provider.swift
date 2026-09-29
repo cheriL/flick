@@ -7,10 +7,11 @@ enum Provider: String, Codable, CaseIterable, Equatable {
 
     // MARK: - URL construction
 
-    /// Resolve the chat-completions endpoint for a given config.
+    /// Resolve the chat-completions endpoint for a given config. The Base URL
+    /// carries the version prefix (`…/v1`); only the resource path is appended.
     func endpoint(forBaseURL raw: String) -> URL? {
         let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: "\(trimmed)/v1/chat/completions")
+        return URL(string: "\(trimmed)/chat/completions")
     }
 
     // MARK: - Request body

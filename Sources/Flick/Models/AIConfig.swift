@@ -12,7 +12,7 @@ struct AIConfig: Codable, Equatable {
 
     static let `default` = AIConfig(
         provider: .openai,
-        baseURL: "https://api.openai.com",
+        baseURL: "https://api.openai.com/v1",
         apiKey: "",
         model: "gpt-4o-mini",
         disableThinking: true
