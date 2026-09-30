@@ -32,19 +32,19 @@ final class FakeProvider: SelectionProvider {
         fake.queue = [("hello", 1234), ("hello", 1234), ("world", 1234)]
         let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
 
-        await confirmation("selection changed to 'world'") { confirmation in
-            let token = NotificationCenter.default.addObserver(
-                forName: .flickSelectionChanged, object: nil, queue: nil
-            ) { note in
-                if (note.userInfo?["text"] as? String) == "world" {
-                    confirmation()
-                }
+        var texts: [String] = []
+        let token = NotificationCenter.default.addObserver(
+            forName: .flickSelectionChanged, object: nil, queue: nil
+        ) { note in
+            if let text = note.userInfo?["text"] as? String {
+                texts.append(text)
             }
-            monitor.start()
-            await pumpMainRunLoop(for: 0.5)
-            monitor.stop()
-            NotificationCenter.default.removeObserver(token)
         }
+        monitor.start()
+        await pumpMainRunLoop(for: 0.5)
+        monitor.stop()
+        NotificationCenter.default.removeObserver(token)
+        #expect(texts.contains("world"))
     }
 
     @Test func doesNotPostWhenSelectionUnchanged() async {
@@ -72,18 +72,18 @@ final class FakeProvider: SelectionProvider {
         fake.queue = [("", 1), (String(repeating: "x", count: 5001), 1), ("ok", 1)]
         let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
 
-        await confirmation("selection changed to 'ok'") { confirmation in
-            let token = NotificationCenter.default.addObserver(
-                forName: .flickSelectionChanged, object: nil, queue: nil
-            ) { note in
-                if (note.userInfo?["text"] as? String) == "ok" {
-                    confirmation()
-                }
+        var texts: [String] = []
+        let token = NotificationCenter.default.addObserver(
+            forName: .flickSelectionChanged, object: nil, queue: nil
+        ) { note in
+            if let text = note.userInfo?["text"] as? String {
+                texts.append(text)
             }
-            monitor.start()
-            await pumpMainRunLoop(for: 0.5)
-            monitor.stop()
-            NotificationCenter.default.removeObserver(token)
         }
+        monitor.start()
+        await pumpMainRunLoop(for: 0.5)
+        monitor.stop()
+        NotificationCenter.default.removeObserver(token)
+        #expect(texts.contains("ok"))
     }
 }
