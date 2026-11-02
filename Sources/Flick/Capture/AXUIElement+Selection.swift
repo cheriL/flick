@@ -95,6 +95,32 @@ extension AXUIElement {
         return nil
     }
 
+    /// Focused-element `kAXSelectedTextAttribute` only — no systemwide or windows-walk
+    /// fallbacks. Supplements the Chrome AppleScript path so native UI (omnibox) selection
+    /// still works when the renderer AX tree is absent.
+    static func selectedTextInFocusedNativeElement(of pid: pid_t) -> String? {
+        guard AXIsProcessTrusted() else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        var focusedRef: CFTypeRef?
+        let focusedStatus = AXUIElementCopyAttributeValue(
+            app,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedRef
+        )
+        guard focusedStatus == .success, let focusedRef else { return nil }
+        let focused = focusedRef as! AXUIElement
+        var selectedRef: CFTypeRef?
+        let selectedStatus = AXUIElementCopyAttributeValue(
+            focused,
+            kAXSelectedTextAttribute as CFString,
+            &selectedRef
+        )
+        guard selectedStatus == .success,
+              let str = selectedRef as? String,
+              !str.isEmpty else { return nil }
+        return str
+    }
+
     /// Read full text via `kAXValueAttribute`, slice it with the range
     /// reported by `kAXSelectedTextRangeAttribute`. This is what WKWebView
     /// web content exposes.
