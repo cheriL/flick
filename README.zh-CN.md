@@ -2,9 +2,9 @@
 
 macOS 选词一键翻译。
 
-![license](https://img.shields.io/badge/license-GPL%20v3-blue.svg?style=flat-square)
-![platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey.svg?style=flat-square)
-![release](https://img.shields.io/github/v/release/cheriL/flick.svg?style=flat-square&include_prereleases)
+[![license](https://img.shields.io/badge/license-GPL%20v3-blue.svg?style=flat-square)](LICENSE)
+[![platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey.svg?style=flat-square)](https://www.apple.com/macos/)
+[![release](https://img.shields.io/github/v/release/cheriL/flick.svg?style=flat-square&include_prereleases)](https://github.com/cheriL/flick/releases)
 
 [English](README.md) · [中文](README.zh-CN.md)
 
