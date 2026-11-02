@@ -171,11 +171,15 @@ final class ChromeSelectionReader: ChromeSelectionReading {
     private let lock = NSLock()
 
     init(executor: @escaping Executor = ChromeSelectionReader.liveExecutor,
-         interval: TimeInterval = 0.3,
+         interval: TimeInterval = 0.15,
          clock: @escaping () -> Date = Date.init) {
         self.executor = executor
         self.interval = interval
         self.clock = clock
+    }
+
+    deinit {
+        timer?.cancel()
     }
 
     var isHealthy: Bool {
@@ -191,6 +195,9 @@ final class ChromeSelectionReader: ChromeSelectionReading {
     func setActive(pid: pid_t?) {
         queue.async { [weak self] in
             guard let self else { return }
+            // The router pings setActive on every monitor tick; re-arming the timer
+            // each time perpetually postpones its first fire and starves the poller.
+            guard self.activePID != pid else { return }
             self.activePID = pid
             self.updateTimer()
         }

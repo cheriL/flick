@@ -104,6 +104,40 @@ import Testing
     }
 }
 
+@Suite final class ChromeSelectionReaderTests {
+    final class Counter {
+        private let lock = NSLock()
+        private var value = 0
+        var count: Int {
+            lock.lock(); defer { lock.unlock() }
+            return value
+        }
+        func increment() {
+            lock.lock(); defer { lock.unlock() }
+            value += 1
+        }
+    }
+
+    /// Regression: the router calls setActive on every monitor tick. If that re-arms the
+    /// poll timer, the timer perpetually postpones its first fire and never polls.
+    @Test func duplicateSetActiveDoesNotStarvePollTimer() async {
+        let counter = Counter()
+        let reader = ChromeSelectionReader(
+            executor: { _ in
+                counter.increment()
+                return ""
+            },
+            interval: 0.02
+        )
+        reader.setActive(pid: getpid())
+        for _ in 0..<8 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+            reader.setActive(pid: getpid())
+        }
+        #expect(counter.count >= 3)
+    }
+}
+
 @Suite final class RoutedSelectionProviderTests {
     final class SpyReader: ChromeSelectionReading {
         var text: String?
