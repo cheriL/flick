@@ -72,7 +72,9 @@ final class TextSelectionMonitor {
         timer = nil
     }
 
-    private func poll() {
+    /// Internal so tests drive it directly instead of racing a real Timer on a
+    /// pumped run loop (flaky on loaded CI runners).
+    func poll() {
         tickCount += 1
         // Toggle off: skip AX, drop any lingering selection so the trigger doesn't stay on screen.
         guard isEnabled else {

@@ -14,40 +14,42 @@ final class FakeProvider: SelectionProvider {
     }
 }
 
-@Suite(.serialized) final class TextSelectionMonitorTests {
-    /// The monitor's Timer lives on RunLoop.main, which swift-testing does not
-    /// service, so the test pumps it via MainActor.run to keep ticks on the
-    /// main thread.
-    private func pumpMainRunLoop(for duration: TimeInterval) async {
-        let deadline = Date().addingTimeInterval(duration)
-        while Date() < deadline {
-            await MainActor.run {
-                RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
-            }
-        }
+/// Serialized: the tests observe the global `flickSelectionChanged` notification
+/// and would see each other's posts if run in parallel.
+@Suite(.serialized) @MainActor final class TextSelectionMonitorTests {
+    /// Reference box — the observer closure can't append across a value-type
+    /// return boundary.
+    private final class TextsBox {
+        var values: [String] = []
     }
 
-    @Test func postsNotificationWhenSelectionChanges() async {
-        let fake = FakeProvider()
-        fake.queue = [("hello", 1234), ("hello", 1234), ("world", 1234)]
-        let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
-
-        var texts: [String] = []
+    private func collectTexts() -> (box: TextsBox, token: NSObjectProtocol) {
+        let box = TextsBox()
         let token = NotificationCenter.default.addObserver(
             forName: .flickSelectionChanged, object: nil, queue: nil
         ) { note in
             if let text = note.userInfo?["text"] as? String {
-                texts.append(text)
+                box.values.append(text)
             }
         }
-        monitor.start()
-        await pumpMainRunLoop(for: 0.5)
-        monitor.stop()
-        NotificationCenter.default.removeObserver(token)
-        #expect(texts.contains("world"))
+        return (box, token)
     }
 
-    @Test func doesNotPostWhenSelectionUnchanged() async {
+    @Test func postsNotificationWhenSelectionChanges() {
+        let fake = FakeProvider()
+        fake.queue = [("hello", 1234), ("hello", 1234), ("world", 1234)]
+        let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
+
+        let (box, token) = collectTexts()
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        monitor.poll()
+        monitor.poll()
+        monitor.poll()
+        #expect(box.values == ["hello", "world"])
+    }
+
+    @Test func doesNotPostWhenSelectionUnchanged() {
         // First selection is posted (we want the button to appear even
         // when Flick starts up with text already selected), subsequent
         // identical selections are deduplicated. So three identical
@@ -60,30 +62,25 @@ final class FakeProvider: SelectionProvider {
         let token = NotificationCenter.default.addObserver(
             forName: .flickSelectionChanged, object: nil, queue: nil
         ) { _ in posts += 1 }
-        monitor.start()
-        await pumpMainRunLoop(for: 0.2)
-        monitor.stop()
-        NotificationCenter.default.removeObserver(token)
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        monitor.poll()
+        monitor.poll()
+        monitor.poll()
         #expect(posts == 1)
     }
 
-    @Test func ignoresEmptyAndTooLongSelections() async {
+    @Test func ignoresEmptyAndTooLongSelections() {
         let fake = FakeProvider()
         fake.queue = [("", 1), (String(repeating: "x", count: 5001), 1), ("ok", 1)]
         let monitor = TextSelectionMonitor(provider: fake, interval: 0.05)
 
-        var texts: [String] = []
-        let token = NotificationCenter.default.addObserver(
-            forName: .flickSelectionChanged, object: nil, queue: nil
-        ) { note in
-            if let text = note.userInfo?["text"] as? String {
-                texts.append(text)
-            }
-        }
-        monitor.start()
-        await pumpMainRunLoop(for: 0.5)
-        monitor.stop()
-        NotificationCenter.default.removeObserver(token)
-        #expect(texts.contains("ok"))
+        let (box, token) = collectTexts()
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        monitor.poll()
+        monitor.poll()
+        monitor.poll()
+        #expect(box.values == ["ok"])
     }
 }
