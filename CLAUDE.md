@@ -37,6 +37,10 @@ Before re-launching during debugging, **explicitly tell the user**:
 
 Do not auto-launch first. This is a recorded project constraint.
 
+The Automation (Apple Events) grant for Chrome works the same way: TCC keys off
+the ad-hoc cdhash, so every rebuild invalidates it and the first Chrome capture
+re-prompts.
+
 ## Known pitfalls
 
 These are real bugs / design constraints future work has hit. Refer to them
@@ -77,15 +81,21 @@ before chasing behaviour that has a known cause.
   process launches. macOS's `AXManualAccessibility` attribute is honoured by
   WebKit (Safari) but ignored by Chromium at runtime — `AXUIElementSetAttributeValue`
   succeeds without error yet does not retroactively build the tree.
-  `scripts/start-chrome.sh` and the menu-bar "启动 Chrome (辅助模式)" button
+  `scripts/start-chrome.sh` and the settings "其他 → 辅助模式" button
   launch Chrome with the flag.
+  Chrome itself no longer needs the flag: when frontmost, `RoutedSelectionProvider`
+  reads the active tab's selection via AppleScript `execute javascript`
+  (`ChromeSelectionReader.swift`, background-poll + cached) — needs Chrome's
+  one-time "Allow JavaScript from Apple Events" setting plus the Automation
+  prompt. The flag path stays as fallback (setting off / permission denied)
+  and for other Chromium/Electron apps.
 
 - **`for _ in 0..<maxDepth` around a queue pop is a bug, not a depth
   limit.** It caps the number of *iterations* (and so nodes examined),
   not the depth. A child layer with hundreds of nodes will only be
-  sampled and the rest dropped. Use a per-queued depth + explicit node
-  budget; see `bfs(from:maxNodes:maxDepth:)` in
-  `AXUIElement+Selection.swift` for the working version.
+  sampled and the rest dropped. Use an explicit node/iteration budget;
+  the capped BFS helpers in `AXUIElement+Selection.swift` (`findRole`,
+  `selectedTextViaRange`) treat the loop bound as one.
 
 - **NSPanel's default `canBecomeKey` is false.** Subclass and override to
   return `true` — `NSApp.activate` + `makeKeyAndOrderFront` alone isn't
@@ -105,6 +115,8 @@ Sources/Flick/
   Capture/                              # text-selection via Accessibility API
     TextSelectionMonitor.swift
     AXUIElement+Selection.swift
+    ChromeSelectionReader.swift         # Chrome selection via AppleScript (background poll)
+    RoutedSelectionProvider.swift       # frontmost-app routing: Chrome → AppleScript, rest → AX
   UI/                                   # SwiftUI surfaces
     FloatingPanelController.swift       # near-cursor panel host
     TriggerButtonView.swift             # palette-style translate button

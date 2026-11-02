@@ -12,6 +12,7 @@ One-click translation for selected text on macOS.
 
 - macOS 26+
 - Accessibility permission (System Settings → Privacy & Security → Accessibility)
+- Chrome (optional): enable View → Developer → Allow JavaScript from Apple Events, then accept the prompt on first use
 
 ## Installation
 

@@ -41,17 +41,17 @@ struct AISettingsView: View {
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    Button("测试连接") { runTest() }
-                        .disabled(isTesting || draft.apiKey.isEmpty)
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
                     SelectableText(
                         text: testResult ?? "",
                         color: testResult.map { $0.hasPrefix("✓") ? Color.green : Color.red } ?? .primary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    if isTesting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Button("测试连接") { runTest() }
+                        .disabled(isTesting || draft.apiKey.isEmpty)
                 }
             }
             .padding(.horizontal, 20)
@@ -76,6 +76,20 @@ struct AISettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                         .padding(.leading, 92)
+                }
+            }
+            .padding(.horizontal, 20)
+
+            sectionDivider
+
+            sectionHeader("其他")
+
+            HStack(spacing: 12) {
+                Text("辅助模式")
+                    .frame(width: 80, alignment: .trailing)
+                    .foregroundStyle(.primary)
+                Button("启动 Chrome") {
+                    ChromeLaunch.launchWithAccessibilityFlag()
                 }
             }
             .padding(.horizontal, 20)
@@ -166,6 +180,18 @@ struct AISettingsView: View {
     private func save() {
         store.save(draft)
         onDismiss()
+    }
+}
+
+/// Launches Chrome with `--force-renderer-accessibility` so its renderer exposes web content
+/// to AX. Fallback for when Chrome's AppleScript path is unavailable (dev setting off /
+/// Automation denied); without the flag Chrome's AX tree has no `AXWebArea`.
+enum ChromeLaunch {
+    static func launchWithAccessibilityFlag() {
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
+        try? task.run()
     }
 }
 
