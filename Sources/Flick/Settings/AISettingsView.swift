@@ -41,17 +41,17 @@ struct AISettingsView: View {
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    Button("测试连接") { runTest() }
-                        .disabled(isTesting || draft.apiKey.isEmpty)
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
                     SelectableText(
                         text: testResult ?? "",
                         color: testResult.map { $0.hasPrefix("✓") ? Color.green : Color.red } ?? .primary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    if isTesting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Button("测试连接") { runTest() }
+                        .disabled(isTesting || draft.apiKey.isEmpty)
                 }
             }
             .padding(.horizontal, 20)
