@@ -29,7 +29,9 @@ import Testing
         let svc = OpenAICompatibleService(config: cfg, session: session)
 
         let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "你好")
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
     }
 
     @Test func translateMapsHTTP401ToTranslationError() async {
@@ -85,7 +87,7 @@ import Testing
         let svc = OpenAICompatibleService(config: cfg, session: session)
 
         let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "高吞吐量部署：在低活动时段运行日志存储迁移。")
+        #expect(result.translation == "高吞吐量部署：在低活动时段运行日志存储迁移。")
     }
 
     @Test func translateStripsMultilineThinkBlock() async throws {
@@ -99,7 +101,7 @@ import Testing
         let svc = OpenAICompatibleService(config: cfg, session: session)
 
         let result = try await svc.translate("hello world", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "你好世界")
+        #expect(result.translation == "你好世界")
     }
 
     @Test func translateLeavesContentWithoutThinkBlockUntouched() async throws {
@@ -113,7 +115,9 @@ import Testing
         let svc = OpenAICompatibleService(config: cfg, session: session)
 
         let result = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "你好")
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
     }
 
     @Test func translateStripsUnclosedThinkBlock() async throws {
@@ -131,7 +135,52 @@ import Testing
         let svc = OpenAICompatibleService(config: cfg, session: session)
 
         let result = try await svc.translate("hello world", to: Locale.Language(identifier: "zh-Hans"))
-        #expect(result == "")
+        #expect(result.translation == "")
+    }
+
+    // MARK: - tagged pronunciation response
+
+    @Test func translateParsesTaggedResponseAfterThinkBlock() async throws {
+        // Think text mentions tag names; stripping must run before tag parsing
+        // so the examples inside <think> can't pollute the result.
+        let raw = """
+        <think>The format asks for <translation> tags. I'll comply.</think>
+        <translation>こんにちは</translation>
+        <source-pronunciation>heləˈloʊ</source-pronunciation>
+        <target-pronunciation>konnichiwa</target-pronunciation>
+        """
+        MockURLProtocol.jsonResponder = { _ in
+            (200, ["choices": [["message": ["content": raw]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        let result = try await svc.translate("hello", to: Locale.Language(identifier: "ja"))
+        #expect(result.translation == "こんにちは")
+        #expect(result.sourcePronunciation == "heləˈloʊ")
+        #expect(result.targetPronunciation == "konnichiwa")
+    }
+
+    @Test func requestBodySystemMessageDescribesTagFormat() async throws {
+        var captured: [String: Any]?
+        MockURLProtocol.jsonResponder = { request in
+            captured = Self.jsonBody(of: request)
+            return (200, ["choices": [["message": ["content": "你好"]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        _ = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+        let body = try #require(captured)
+        let messages = try #require(body["messages"] as? [[String: Any]])
+        let system = try #require(messages.first?["content"] as? String)
+        #expect(system.contains("<translation>"))
+        #expect(system.contains("source-pronunciation"))
+        #expect(system.contains("Pinyin"))
     }
 
     // MARK: - thinking suppression params
@@ -199,6 +248,97 @@ import Testing
         }
         guard let data else { return nil }
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+}
+
+// MARK: - Tagged-response parsing (pure, no network)
+
+@Suite struct ProviderParsingTests {
+
+    @Test func parsesAllThreeTagsWithMultilineTranslation() {
+        let raw = """
+        <translation>
+        第一行
+        第二行
+        </translation>
+        <source-pronunciation>
+
+            /həˈloʊ/
+
+        </source-pronunciation>
+        <target-pronunciation> dì-yī háng </target-pronunciation>
+        """
+        let result = Provider.parseTaggedResponse(raw)
+        #expect(result.translation == "第一行\n第二行")
+        #expect(result.sourcePronunciation == "/həˈloʊ/")
+        #expect(result.targetPronunciation == "dì-yī háng")
+    }
+
+    @Test func missingPronunciationTagsYieldNil() {
+        let result = Provider.parseTaggedResponse("<translation>你好</translation>")
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
+    }
+
+    @Test func emptyPronunciationTagsYieldNil() {
+        let raw = """
+        <translation>你好</translation>
+        <source-pronunciation>   </source-pronunciation>
+        <target-pronunciation></target-pronunciation>
+        """
+        let result = Provider.parseTaggedResponse(raw)
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
+    }
+
+    @Test func missingTranslationTagFallsBackToWholeText() {
+        let result = Provider.parseTaggedResponse("  你好  ")
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
+    }
+
+    @Test func missingTranslationTagStripsStrayPronunciationTags() {
+        let raw = """
+        你好
+        <source-pronunciation>həˈloʊ</source-pronunciation>
+        <target-pronunciation>nǐ hǎo</target-pronunciation>
+        """
+        let result = Provider.parseTaggedResponse(raw)
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == "həˈloʊ")
+        #expect(result.targetPronunciation == "nǐ hǎo")
+    }
+
+    @Test func toleratesTagAttributes() {
+        let raw = """
+        <translation lang="zh-Hans">你好</translation>
+        <source-pronunciation xml:lang="en">həˈloʊ</source-pronunciation>
+        """
+        let result = Provider.parseTaggedResponse(raw)
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == "həˈloʊ")
+    }
+
+    @Test func stripsCodeFencesAroundTaggedOutput() {
+        let raw = """
+        ```
+        <translation>你好</translation>
+        <target-pronunciation>nǐ hǎo</target-pronunciation>
+        ```
+        """
+        let result = Provider.parseTaggedResponse(raw)
+        #expect(result.translation == "你好")
+        #expect(result.targetPronunciation == "nǐ hǎo")
+    }
+
+    @Test func untaggedFencedTextFallsBackWithoutFenceLines() {
+        let result = Provider.parseTaggedResponse("```\n你好\n```")
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(result.targetPronunciation == nil)
     }
 }
 

@@ -153,7 +153,7 @@ final class MenuBarController {
                 if Task.isCancelled { return }
                 await MainActor.run {
                     if Task.isCancelled { return }
-                    self.panel.showResult(original: text, state: .success(translated), at: cursor, onRetry: { [weak self] in
+                    self.panel.showResult(original: text, state: .success(translated.translation), at: cursor, onRetry: { [weak self] in
                         self?.runTranslation(text: text, at: cursor)
                     })
                 }

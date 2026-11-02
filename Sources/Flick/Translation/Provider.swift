@@ -43,7 +43,7 @@ enum Provider: String, Codable, CaseIterable, Equatable {
 
     // MARK: - Response parsing
 
-    func extractTranslation(from data: Data) throws -> String {
+    func extractResult(from data: Data) throws -> TranslationResult {
         do {
             let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             let choices = obj?["choices"] as? [[String: Any]] ?? []
@@ -52,8 +52,7 @@ enum Provider: String, Codable, CaseIterable, Equatable {
                   let content = message["content"] as? String else {
                 throw TranslationError.decoding("missing choices[0].message.content")
             }
-            let cleaned = Self.stripThinkBlocks(content)
-            return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+            return Self.parseTaggedResponse(Self.stripThinkBlocks(content))
         } catch let e as TranslationError {
             throw e
         } catch {
@@ -72,5 +71,44 @@ enum Provider: String, Codable, CaseIterable, Equatable {
         }
         let range = NSRange(text.startIndex..., in: text)
         return regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+    }
+
+    // MARK: - Tagged-response parsing
+
+    static func parseTaggedResponse(_ raw: String) -> TranslationResult {
+        let text = stripCodeFences(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+        let translation = tagContents("translation", in: text)
+            ?? text
+                .replacingOccurrences(
+                    of: #"<(?:source|target)-pronunciation>[\s\S]*?</(?:source|target)-pronunciation>"#,
+                    with: "",
+                    options: .regularExpression
+                )
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        return TranslationResult(
+            translation: translation,
+            sourcePronunciation: tagContents("source-pronunciation", in: text),
+            targetPronunciation: tagContents("target-pronunciation", in: text)
+        )
+    }
+
+    /// `[^>]*` tolerates attributes the model may add (`<translation lang="zh">`);
+    /// `[\s\S]*?` spans newlines — `.` does not match them in NSRegularExpression.
+    private static func tagContents(_ name: String, in text: String) -> String? {
+        let pattern = #"<\#(name)[^>]*>([\s\S]*?)</\#(name)>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text) else { return nil }
+        let value = text[range].trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    /// Models occasionally fence the tagged block; tags match fine inside fences,
+    /// but fence lines leak into the untagged fallback text.
+    private static func stripCodeFences(_ text: String) -> String {
+        var lines = text.components(separatedBy: .newlines)
+        if lines.first?.hasPrefix("```") == true { lines.removeFirst() }
+        if lines.last?.trimmingCharacters(in: .whitespaces) == "```" { lines.removeLast() }
+        return lines.joined(separator: "\n")
     }
 }

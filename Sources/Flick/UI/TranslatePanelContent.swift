@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TranslatePanelContent: View {
-    let onTranslate: (String, Locale.Language) async throws -> String
+    let onTranslate: (String, Locale.Language) async throws -> TranslationResult
     let onTaskStart: (Task<Void, Never>) -> Void
 
     @State private var input: String = ""
@@ -23,7 +23,11 @@ struct TranslatePanelContent: View {
                 controlRow
                 if !isIdle {
                     Divider().padding(.vertical, 8)
-                    resultArea
+                    ScrollView(.vertical) {
+                        resultArea
+                    }
+                    .frame(maxHeight: 240)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(12)
@@ -70,6 +74,19 @@ struct TranslatePanelContent: View {
         .padding(.top, 10)
     }
 
+    private func readingRow(label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text(value)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     @ViewBuilder
     private var resultArea: some View {
         switch state {
@@ -83,11 +100,19 @@ struct TranslatePanelContent: View {
                     .font(.callout)
                     .lineLimit(3)
             }
-        case .success(let translation):
-            Text(translation)
-                .font(.body)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+        case .success(let result):
+            VStack(alignment: .leading, spacing: 6) {
+                Text(result.translation)
+                    .font(.body)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let source = result.sourcePronunciation {
+                    readingRow(label: "原文", value: source)
+                }
+                if let target = result.targetPronunciation {
+                    readingRow(label: "译文", value: target)
+                }
+            }
         case .failure(let message):
             VStack(alignment: .leading, spacing: 6) {
                 Text(message)
@@ -125,7 +150,7 @@ struct TranslatePanelContent: View {
 enum TranslateState: Equatable {
     case idle
     case loading(String)
-    case success(String)
+    case success(TranslationResult)
     case failure(String)
 }
 
