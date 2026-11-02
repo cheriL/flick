@@ -30,8 +30,12 @@ struct ResultWindowView: View {
 
             Divider().opacity(0.4)
 
-            content
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView(.vertical) {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 240)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .frame(width: 360)
