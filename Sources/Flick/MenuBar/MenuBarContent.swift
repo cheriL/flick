@@ -58,9 +58,6 @@ struct MenuBarContent: View {
 
         thinDivider
 
-        actionButton("启动 Chrome (辅助模式)") {
-            ChromeLaunch.launchWithAccessibilityFlag()
-        }
         actionButton("翻译…") {
             onOpenTranslate()
         }
@@ -165,18 +162,6 @@ enum PermissionGrant {
         task.arguments = ["-c", "sleep 0.2 && open \"\(bundlePath)\""]
         try? task.run()
         NSApp.terminate(nil)
-    }
-}
-
-/// Launches Chrome with `--force-renderer-accessibility` so its renderer exposes web content
-/// to AX. Without it, `AXUIElement` calls into Chrome's web content see no `AXWebArea` and
-/// Flick can't read selected text on web pages.
-enum ChromeLaunch {
-    static func launchWithAccessibilityFlag() {
-        let task = Process()
-        task.launchPath = "/bin/sh"
-        task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
-        try? task.run()
     }
 }
 
