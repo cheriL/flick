@@ -21,7 +21,7 @@ struct AISettingsView: View {
     var body: some View {
         // Flat VStack with bold `Text` headers — no `Form` / `Section` containers.
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("Model Configuration")
+            sectionHeader("Model")
 
             VStack(alignment: .leading, spacing: 10) {
                 configField("Base URL", text: $draft.baseURL,
@@ -31,7 +31,7 @@ struct AISettingsView: View {
 
                 HStack(spacing: 12) {
                     Text("Reasoning")
-                        .frame(width: 120, alignment: .trailing)
+                        .frame(width: 108, alignment: .trailing)
                         .foregroundStyle(.primary)
                     Toggle("", isOn: Binding(
                         get: { !draft.disableThinking },
@@ -40,18 +40,21 @@ struct AISettingsView: View {
                     .labelsHidden()
                 }
 
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
                     SelectableText(
                         text: testResult ?? "",
                         color: testResult.map { $0.hasPrefix("✓") ? Color.green : Color.red } ?? .primary
                     )
+                    .padding(.leading, 120)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
+                    HStack(spacing: 8) {
+                        if isTesting {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Button("Test") { runTest() }
+                            .disabled(isTesting || draft.apiKey.isEmpty)
                     }
-                    Button("Test") { runTest() }
-                        .disabled(isTesting || draft.apiKey.isEmpty)
                 }
             }
             .padding(.horizontal, 20)
@@ -60,10 +63,10 @@ struct AISettingsView: View {
 
             sectionHeader("General")
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
-                    Text("Launch at Login")
-                        .frame(width: 120, alignment: .trailing)
+                    Text("Auto Start")
+                        .frame(width: 108, alignment: .trailing)
                         .foregroundStyle(.primary)
                     Toggle("", isOn: Binding(
                         get: { autoStartEnabled },
@@ -75,21 +78,16 @@ struct AISettingsView: View {
                     Text(err)
                         .font(.caption)
                         .foregroundStyle(.red)
-                        .padding(.leading, 132)
+                        .padding(.leading, 120)
                 }
-            }
-            .padding(.horizontal, 20)
 
-            sectionDivider
-
-            sectionHeader("Other")
-
-            HStack(spacing: 12) {
-                Text("Accessibility Mode")
-                    .frame(width: 120, alignment: .trailing)
-                    .foregroundStyle(.primary)
-                Button("Launch Chrome") {
-                    ChromeLaunch.launchWithAccessibilityFlag()
+                HStack(spacing: 12) {
+                    Text("Chrome AX Mode")
+                        .frame(width: 108, alignment: .trailing)
+                        .foregroundStyle(.primary)
+                    Button("Launch") {
+                        ChromeLaunch.launchWithAccessibilityFlag()
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -103,7 +101,7 @@ struct AISettingsView: View {
             .padding(.top, 16)
             .padding(.bottom, 16)
         }
-        .frame(width: 400)
+        .frame(width: 440)
     }
 
     /// Bold section title — flat, non-rounded header.
@@ -132,7 +130,7 @@ struct AISettingsView: View {
         } catch {
             // Reflect actual OS state — if register() threw, the toggle is still off.
             autoStartEnabled = AutoStart.isEnabled
-            autoStartError = "Failed to change Launch at Login: \(error.localizedDescription)"
+            autoStartError = "Failed to change Auto Start: \(error.localizedDescription)"
         }
     }
 
@@ -143,16 +141,16 @@ struct AISettingsView: View {
                              placeholder: String = "") -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .frame(width: 120, alignment: .trailing)
+                .frame(width: 108, alignment: .trailing)
                 .foregroundStyle(.primary)
             if secure {
                 SecureField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 228, height: 22)
+                    .frame(width: 280, height: 22)
             } else {
                 TextField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 228, height: 22)
+                    .frame(width: 280, height: 22)
             }
         }
     }

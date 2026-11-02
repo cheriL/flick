@@ -81,7 +81,7 @@ before chasing behaviour that has a known cause.
   process launches. macOS's `AXManualAccessibility` attribute is honoured by
   WebKit (Safari) but ignored by Chromium at runtime — `AXUIElementSetAttributeValue`
   succeeds without error yet does not retroactively build the tree.
-  `scripts/start-chrome.sh` and the settings "Other → Accessibility Mode" button
+  `scripts/start-chrome.sh` and the settings "General → Chrome AX Mode" button
   launch Chrome with the flag.
   Chrome itself no longer needs the flag: when frontmost, `RoutedSelectionProvider`
   reads the active tab's selection via AppleScript `execute javascript`

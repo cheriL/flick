@@ -6,6 +6,7 @@ import Combine
 struct MenuBarContent: View {
     let store: ConfigStore
     let onOpenTranslate: () -> Void
+    let onOpenSettings: () -> Void
     let onQuit: () -> Void
 
     /// Re-checked while the menu is visible via a 1 Hz Combine timer started in `.onAppear`.
@@ -62,7 +63,7 @@ struct MenuBarContent: View {
             onOpenTranslate()
         }
         actionButton("Settings…") {
-            AISettingsWindow.show(store: store)
+            onOpenSettings()
         }
 
         // Separator marks Quit as a terminal action.
@@ -87,9 +88,6 @@ struct MenuBarContent: View {
                 }
                 Button("Restart") {
                     PermissionGrant.relaunchSelf()
-                }
-                Button("Check") {
-                    isTrusted = AXUIElement.isProcessTrusted
                 }
             }
         }
@@ -185,7 +183,7 @@ enum AISettingsWindow {
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.isReleasedWhenClosed = false
         // Initial content-size hint for the first paint; SwiftUI's intrinsic-size layout takes over.
-        w.setContentSize(NSSize(width: 400, height: 320))
+        w.setContentSize(NSSize(width: 440, height: 320))
         w.center()
         // Drop the cached reference if the user closes via the traffic-light button,
         // so the next menu click re-creates a fresh one.

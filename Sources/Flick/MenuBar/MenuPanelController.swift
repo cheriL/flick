@@ -41,6 +41,10 @@ final class MenuPanelController {
                 self?.hide()
                 self?.onOpenTranslate()
             },
+            onOpenSettings: { [weak self] in
+                self?.hide()
+                AISettingsWindow.show(store: store)
+            },
             onQuit: { [weak self] in
                 self?.hide()
                 quitHandler()
