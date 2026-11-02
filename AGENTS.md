@@ -1,4 +1,4 @@
-# Flick — Claude Code Guide
+# Flick — Agent Guide
 
 A minimal macOS menu-bar translator. Select text anywhere, a translate button
 appears next to the cursor, click it to see the result. All translation runs
