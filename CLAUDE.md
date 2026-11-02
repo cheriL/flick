@@ -1,9 +1,9 @@
 # Flick — Claude Code Guide
 
 A minimal macOS menu-bar translator. Select text anywhere, a translate button
-appears next to the cursor, click it to see the result. Text selection →
-Apple Translation (on-device, free); ⌘ + selection → AI translation
-(OpenAI-compatible API).
+appears next to the cursor, click it to see the result. All translation runs
+through an OpenAI-compatible API; the manual panel (Translate…) adds a
+target-language picker.
 
 Target: **macOS 26+**, Swift 5 language mode (forced via `Package.swift`'s
 `swift-tools-version: 6.2` + `swiftLanguageMode(.v5)`), SwiftPM only — no Xcode
@@ -81,7 +81,7 @@ before chasing behaviour that has a known cause.
   process launches. macOS's `AXManualAccessibility` attribute is honoured by
   WebKit (Safari) but ignored by Chromium at runtime — `AXUIElementSetAttributeValue`
   succeeds without error yet does not retroactively build the tree.
-  `scripts/start-chrome.sh` and the settings "其他 → 辅助模式" button
+  `scripts/start-chrome.sh` and the settings "Other → Accessibility Mode" button
   launch Chrome with the flag.
   Chrome itself no longer needs the flag: when frontmost, `RoutedSelectionProvider`
   reads the active tab's selection via AppleScript `execute javascript`
@@ -126,10 +126,9 @@ Sources/Flick/
     TranslatePanelController.swift      # menu-bar manual-translate panel host
     TranslatePanelContent.swift         # SwiftUI view for the manual panel
   Translation/
-    Provider.swift                      # enum: apple / openai
-    AppleTranslationService.swift       # on-device Translation framework
+    Provider.swift                      # openai-only: endpoint, request, response parsing
     OpenAICompatibleService.swift       # OpenAI-compatible HTTP API
-    TranslationService.swift            # dispatch + coexistence
+    TranslationService.swift            # protocol + TranslationResult / TranslationError
   Settings/                             # AISettingsView, AutoStart
   MenuBar/                              # MenuBarController, MenuBarContent,
                                          # MenuPanelController, SelectionToggleRow
@@ -157,8 +156,13 @@ directory than the view, so don't grep only the view's own folder):
 ## Hard constraints (do not violate without an explicit ask)
 
 - **OpenAI-compatible API only.** Claude/Anthropic was removed earlier and
-  must not be reintroduced as a provider. `OpenAICompatibleService` is the
-  single AI translation entry point.
+  must not be reintroduced as a provider. Apple Translation was removed too —
+  `Provider` is `openai`-only. `OpenAICompatibleService` is the single AI
+  translation entry point.
+- **UI copy is English-only.** The one exception is the manual panel's
+  target-language picker, which lists endonyms (简体中文, 日本語, 한국어,
+  Français) — don't translate those entries or re-localize the rest of the UI.
+
 - **API key is stored in plain plist** (`AIConfig` via `ConfigStore`). The
   user has consciously accepted this trade-off; do not migrate to Keychain
   or add encryption unless asked.

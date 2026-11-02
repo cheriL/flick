@@ -56,7 +56,7 @@ struct TranslatePanelContent: View {
 
     private var controlRow: some View {
         HStack(spacing: 8) {
-            Picker("翻译成", selection: $targetCode) {
+            Picker("Translate to", selection: $targetCode) {
                 ForEach(Self.languages, id: \.code) { lang in
                     Text(lang.label).tag(lang.code)
                 }
@@ -65,7 +65,7 @@ struct TranslatePanelContent: View {
             .frame(maxWidth: .infinity)
 
             Button(action: triggerTranslate) {
-                Text("翻译")
+                Text("Translate")
                     .frame(minWidth: 44)
             }
             .buttonStyle(.borderedProminent)
@@ -107,10 +107,10 @@ struct TranslatePanelContent: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 if let source = result.sourcePronunciation {
-                    readingRow(label: "原文", value: source)
+                    readingRow(label: "Source", value: source)
                 }
                 if let target = result.targetPronunciation {
-                    readingRow(label: "译文", value: target)
+                    readingRow(label: "Translation", value: target)
                 }
             }
         case .failure(let message):
@@ -119,7 +119,7 @@ struct TranslatePanelContent: View {
                     .font(.callout)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("重试") { triggerTranslate() }
+                Button("Retry") { triggerTranslate() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }

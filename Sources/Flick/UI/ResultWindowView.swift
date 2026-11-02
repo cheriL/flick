@@ -17,7 +17,7 @@ struct ResultWindowView: View {
 
     var loadingIconName: String? { nil }
 
-    var loadingLabel: String { "翻译中…" }
+    var loadingLabel: String { "Translating…" }
 
     var failureIconName: String? { "xmark.circle" }
 
@@ -66,7 +66,7 @@ struct ResultWindowView: View {
                     Text(message)
                         .font(.system(size: 13))
                         .foregroundStyle(.red)
-                    Button("重试", action: onRetry)
+                    Button("Retry", action: onRetry)
                         .controlSize(.small)
                 }
             }

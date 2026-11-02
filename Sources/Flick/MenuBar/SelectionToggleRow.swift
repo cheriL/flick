@@ -14,7 +14,7 @@ struct SelectionToggleRow: View {
                     Text("Flick")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
-                    Text(isOn ? "已启用" : "已停用")
+                    Text(isOn ? "Enabled" : "Disabled")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -29,7 +29,7 @@ struct SelectionToggleRow: View {
         .buttonStyle(SelectionToggleButtonStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Flick")
-        .accessibilityValue(isOn ? "已启用" : "已停用")
+        .accessibilityValue(isOn ? "Enabled" : "Disabled")
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 

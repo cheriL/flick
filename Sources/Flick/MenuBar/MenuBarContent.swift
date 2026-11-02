@@ -58,37 +58,37 @@ struct MenuBarContent: View {
 
         thinDivider
 
-        actionButton("翻译…") {
+        actionButton("Translate…") {
             onOpenTranslate()
         }
-        actionButton("设置…") {
+        actionButton("Settings…") {
             AISettingsWindow.show(store: store)
         }
 
         // Separator marks Quit as a terminal action.
         thinDivider
 
-        actionButton("退出", action: onQuit)
+        actionButton("Quit", action: onQuit)
             .keyboardShortcut("q")
     }
 
     private var permissionWarning: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("⚠️ 需要辅助功能权限")
+            Text("⚠️ Accessibility Permission Required")
                 .font(.headline)
-            Text("Flick 需要读取选中文字。\n请在 系统设置 → 隐私与安全 → 辅助功能 中启用 Flick。")
+            Text("Flick needs to read selected text.\nEnable Flick in System Settings → Privacy & Security → Accessibility.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button("系统设置") {
+                Button("Settings") {
                     PermissionGrant.openSystemSettingsAccessibility()
                     PermissionGrant.triggerAXPrompt()
                 }
-                Button("重启") {
+                Button("Restart") {
                     PermissionGrant.relaunchSelf()
                 }
-                Button("检测") {
+                Button("Check") {
                     isTrusted = AXUIElement.isProcessTrusted
                 }
             }
@@ -181,7 +181,7 @@ enum AISettingsWindow {
             window = nil
         })
         let w = NSWindow(contentViewController: host)
-        w.title = "Flick 设置"
+        w.title = "Flick Settings"
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.isReleasedWhenClosed = false
         // Initial content-size hint for the first paint; SwiftUI's intrinsic-size layout takes over.

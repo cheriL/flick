@@ -21,6 +21,6 @@ struct TriggerButtonView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("翻译")
+        .help("Translate")
     }
 }

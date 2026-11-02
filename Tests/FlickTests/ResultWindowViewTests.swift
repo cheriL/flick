@@ -6,7 +6,7 @@ import Testing
     @Test func loadingUsesProgressViewAndLabel() {
         let view = ResultWindowView(original: "hi", state: .loading, onRetry: {})
         #expect(view.loadingIconName == nil)
-        #expect(view.loadingLabel == "翻译中…")
+        #expect(view.loadingLabel == "Translating…")
     }
 
     @Test func failureUsesXmarkCircle() {

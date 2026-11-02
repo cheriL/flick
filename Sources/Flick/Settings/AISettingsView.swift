@@ -21,7 +21,7 @@ struct AISettingsView: View {
     var body: some View {
         // Flat VStack with bold `Text` headers — no `Form` / `Section` containers.
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("模型配置")
+            sectionHeader("Model Configuration")
 
             VStack(alignment: .leading, spacing: 10) {
                 configField("Base URL", text: $draft.baseURL,
@@ -30,8 +30,8 @@ struct AISettingsView: View {
                 configField("Model", text: $draft.model)
 
                 HStack(spacing: 12) {
-                    Text("深度思考")
-                        .frame(width: 80, alignment: .trailing)
+                    Text("Reasoning")
+                        .frame(width: 120, alignment: .trailing)
                         .foregroundStyle(.primary)
                     Toggle("", isOn: Binding(
                         get: { !draft.disableThinking },
@@ -50,7 +50,7 @@ struct AISettingsView: View {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    Button("测试连接") { runTest() }
+                    Button("Test") { runTest() }
                         .disabled(isTesting || draft.apiKey.isEmpty)
                 }
             }
@@ -58,12 +58,12 @@ struct AISettingsView: View {
 
             sectionDivider
 
-            sectionHeader("通用")
+            sectionHeader("General")
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
-                    Text("开机自启动")
-                        .frame(width: 80, alignment: .trailing)
+                    Text("Launch at Login")
+                        .frame(width: 120, alignment: .trailing)
                         .foregroundStyle(.primary)
                     Toggle("", isOn: Binding(
                         get: { autoStartEnabled },
@@ -75,20 +75,20 @@ struct AISettingsView: View {
                     Text(err)
                         .font(.caption)
                         .foregroundStyle(.red)
-                        .padding(.leading, 92)
+                        .padding(.leading, 132)
                 }
             }
             .padding(.horizontal, 20)
 
             sectionDivider
 
-            sectionHeader("其他")
+            sectionHeader("Other")
 
             HStack(spacing: 12) {
-                Text("辅助模式")
-                    .frame(width: 80, alignment: .trailing)
+                Text("Accessibility Mode")
+                    .frame(width: 120, alignment: .trailing)
                     .foregroundStyle(.primary)
-                Button("启动 Chrome") {
+                Button("Launch Chrome") {
                     ChromeLaunch.launchWithAccessibilityFlag()
                 }
             }
@@ -96,7 +96,7 @@ struct AISettingsView: View {
 
             HStack {
                 Spacer()
-                Button("保存") { save() }
+                Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, 20)
@@ -132,7 +132,7 @@ struct AISettingsView: View {
         } catch {
             // Reflect actual OS state — if register() threw, the toggle is still off.
             autoStartEnabled = AutoStart.isEnabled
-            autoStartError = "无法更改自启动设置：\(error.localizedDescription)"
+            autoStartError = "Failed to change Launch at Login: \(error.localizedDescription)"
         }
     }
 
@@ -143,16 +143,16 @@ struct AISettingsView: View {
                              placeholder: String = "") -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .frame(width: 80, alignment: .trailing)
+                .frame(width: 120, alignment: .trailing)
                 .foregroundStyle(.primary)
             if secure {
                 SecureField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 268, height: 22)
+                    .frame(width: 228, height: 22)
             } else {
                 TextField(placeholder, text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 268, height: 22)
+                    .frame(width: 228, height: 22)
             }
         }
     }
@@ -163,7 +163,7 @@ struct AISettingsView: View {
         Task {
             let svc = OpenAICompatibleService(config: draft)
             do {
-                let translated = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
+                let translated = try await svc.translate("你好", to: Locale.Language(identifier: "en"))
                 await MainActor.run {
                     testResult = "✓ \(translated.translation)"
                     isTesting = false
