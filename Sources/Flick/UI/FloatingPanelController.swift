@@ -50,14 +50,23 @@ final class FloatingPanelController {
     }
 
     func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
-        let size = CGSize(width: 360, height: 140) // height grows with content via resizable mask
         let screen = screenFrame(near: cursor)
-        let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
-
-        resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         let root = ResultWindowView(original: original, state: state, onRetry: onRetry)
         let container = PanelContainerView(rootView: root)
         resultPanel.contentView = container
+        // Content must be attached and laid out before positioning: the panel's
+        // real size comes from the hosting view's fitting size, and positioning
+        // with a placeholder rect lets the content-driven resize extend past the
+        // screen bottom (behind the Dock) without ever being re-clamped.
+        container.layoutSubtreeIfNeeded()
+        let fallback = CGSize(width: 360, height: 140)
+        var size = container.fittingSize
+        if size.width <= 0 { size.width = fallback.width }
+        if size.height <= 0 { size.height = fallback.height }
+        size.height = min(size.height, screen.height - 24)
+
+        let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
+        resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         resultPanel.orderFrontRegardless()
         triggerPanel.orderOut(nil)
         triggerActive = false
@@ -92,12 +101,14 @@ final class FloatingPanelController {
     // MARK: - Private
 
     /// Screen rect to place the panel on. Resolved from the cursor, not `NSScreen.main`
-    /// (see `PanelPositioning.screenFrame`).
+    /// (see `PanelPositioning.screenFrame`). Uses `visibleFrame` — the raw `frame`
+    /// includes the Dock and menu-bar strips, so clamping against it parks panels
+    /// behind the Dock at screen edges.
     private func screenFrame(near cursor: CGPoint) -> CGRect {
         PanelPositioning.screenFrame(
             for: cursor,
-            in: NSScreen.screens.map(\.frame),
-            fallback: NSScreen.main?.frame ?? .zero
+            in: NSScreen.screens.map(\.visibleFrame),
+            fallback: NSScreen.main?.visibleFrame ?? .zero
         )
     }
 

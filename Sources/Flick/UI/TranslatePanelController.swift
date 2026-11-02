@@ -131,10 +131,13 @@ final class TranslatePanelController {
     private func positionPanel() {
         let panelSize = panel.frame.size
         let button = statusItemAnchor
+        // `visibleFrame`, not `frame`: the raw frame includes the Dock strip, and
+        // the status-item anchor sits in the menu bar — outside `visibleFrame` —
+        // so the nearest-display snap still resolves to the correct screen.
         let screen = PanelPositioning.screenFrame(
             for: NSPoint(x: button.midX, y: button.midY),
-            in: NSScreen.screens.map(\.frame),
-            fallback: NSScreen.main?.frame ?? .zero
+            in: NSScreen.screens.map(\.visibleFrame),
+            fallback: NSScreen.main?.visibleFrame ?? .zero
         )
 
         let roomRight = screen.maxX - button.maxX
@@ -156,7 +159,7 @@ final class TranslatePanelController {
             screen.maxX - panelSize.width - 8
         )
 
-        let originY = button.minY - panelSize.height
+        let originY = max(button.minY - panelSize.height, screen.minY)
         panel.setFrameOrigin(NSPoint(x: clampedX, y: originY))
     }
 
