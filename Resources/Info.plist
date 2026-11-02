@@ -26,6 +26,8 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Flick, 2026</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Flick reads the selected text from the active Google Chrome tab to translate it.</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

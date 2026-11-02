@@ -19,7 +19,7 @@ final class MenuBarController {
     init(store: ConfigStore, panel: FloatingPanelController) {
         self.store = store
         self.panel = panel
-        self.monitor = TextSelectionMonitor(provider: AXSelectionProvider())
+        self.monitor = TextSelectionMonitor(provider: RoutedSelectionProvider(chromeReader: ChromeSelectionReader()))
         // Seed the monitor with the persisted toggle so default-ON matches UserDefaults.
         self.monitor.isEnabled = store.isSelectionEnabled
         // Status item is created eagerly so the icon is set before any placeholder can flash.
