@@ -24,8 +24,13 @@ struct AISettingsView: View {
             sectionHeader("Model")
 
             VStack(alignment: .leading, spacing: 10) {
-                configField("Base URL", text: $draft.baseURL,
-                            placeholder: "https://api.openai.com/v1")
+                HStack(spacing: 12) {
+                    Text("Base URL")
+                        .frame(width: 108, alignment: .trailing)
+                        .foregroundStyle(.primary)
+                    PresetComboBox(text: $draft.baseURL, items: BaseURLPresets.all)
+                        .frame(width: 280, height: 22)
+                }
                 configField("API Key", text: $draft.apiKey, secure: true)
                 configField("Model", text: $draft.model)
 
@@ -137,18 +142,17 @@ struct AISettingsView: View {
     /// One row of the config table. Frame is applied to the leaf `TextField` (not a wrapping
 /// `Group`) so a long URL doesn't stretch the row.
     @ViewBuilder
-    private func configField(_ label: String, text: Binding<String>, secure: Bool = false,
-                             placeholder: String = "") -> some View {
+    private func configField(_ label: String, text: Binding<String>, secure: Bool = false) -> some View {
         HStack(spacing: 12) {
             Text(label)
                 .frame(width: 108, alignment: .trailing)
                 .foregroundStyle(.primary)
             if secure {
-                SecureField(placeholder, text: text)
+                SecureField("", text: text)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 280, height: 22)
             } else {
-                TextField(placeholder, text: text)
+                TextField("", text: text)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 280, height: 22)
             }
@@ -190,6 +194,72 @@ enum ChromeLaunch {
         task.launchPath = "/bin/sh"
         task.arguments = ["-c", "open -a \"Google Chrome\" --args --force-renderer-accessibility"]
         try? task.run()
+    }
+}
+
+/// Built-in OpenAI-compatible endpoints. Each carries its version prefix — the
+/// endpoint builder appends only `/chat/completions`.
+enum BaseURLPresets {
+    static let all = [
+        "https://api.openai.com/v1",
+        "https://api.deepseek.com/v1",
+        "https://open.bigmodel.cn/api/paas/v4",
+    ]
+}
+
+/// NSComboBox wrapper — preset endpoints in the dropdown, free-form typing still
+/// works. SwiftUI has no native combo box.
+private struct PresetComboBox: NSViewRepresentable {
+    @Binding var text: String
+    let items: [String]
+
+    func makeNSView(context: Context) -> NSComboBox {
+        let box = NSComboBox()
+        box.addItems(withObjectValues: items)
+        box.isEditable = true
+        box.completes = false
+        box.placeholderString = "https://api.openai.com/v1"
+        box.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        box.numberOfVisibleItems = items.count
+        box.delegate = context.coordinator
+        box.stringValue = text
+        return box
+    }
+
+    func updateNSView(_ box: NSComboBox, context: Context) {
+        context.coordinator.parent = self
+        if box.stringValue != text {
+            box.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, NSComboBoxDelegate {
+        var parent: PresetComboBox
+        init(_ parent: PresetComboBox) { self.parent = parent }
+
+        // List pick: read the selected item, not stringValue — the action-based
+        // sync raced AppKit and saved the pre-pick value.
+        func comboBoxSelectionDidChange(_ notification: Notification) {
+            guard let box = notification.object as? NSComboBox else { return }
+            let idx = box.indexOfSelectedItem
+            if idx >= 0, idx < parent.items.count {
+                parent.text = parent.items[idx]
+            } else {
+                parent.text = box.stringValue
+            }
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let box = notification.object as? NSComboBox else { return }
+            parent.text = box.stringValue
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            guard let box = notification.object as? NSComboBox else { return }
+            parent.text = box.stringValue
+        }
     }
 }
 

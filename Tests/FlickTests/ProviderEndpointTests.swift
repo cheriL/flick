@@ -17,4 +17,11 @@ import Testing
         let url = Provider.openai.endpoint(forBaseURL: "https://example.com/gateway/v1")
         #expect(url?.absoluteString == "https://example.com/gateway/v1/chat/completions")
     }
+
+    @Test func presetsBuildUsableEndpoints() {
+        for base in BaseURLPresets.all {
+            let url = Provider.openai.endpoint(forBaseURL: base)
+            #expect(url?.absoluteString.hasSuffix("/chat/completions") == true)
+        }
+    }
 }

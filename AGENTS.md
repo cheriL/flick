@@ -97,6 +97,12 @@ before chasing behaviour that has a known cause.
   the capped BFS helpers in `AXUIElement+Selection.swift` (`findRole`,
   `selectedTextViaRange`) treat the loop bound as one.
 
+- **NSComboBox's target/action races the value commit.** The action fires with
+  the pre-pick `stringValue` (or not at all inside NSHostingView), so picking
+  from the dropdown silently saves the old value. Sync via the
+  `comboBoxSelectionDidChange` delegate + `indexOfSelectedItem` instead — see
+  `PresetComboBox` in `AISettingsView.swift`.
+
 - **NSPanel's default `canBecomeKey` is false.** Subclass and override to
   return `true` — `NSApp.activate` + `makeKeyAndOrderFront` alone isn't
   enough in an `LSUIElement` app. See `TranslatePanelController.KeyablePanel`.
