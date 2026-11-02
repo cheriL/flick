@@ -18,7 +18,7 @@ final class OpenAICompatibleService: TranslationService {
         return true
     }
 
-    func translate(_ text: String, to target: Locale.Language) async throws -> String {
+    func translate(_ text: String, to target: Locale.Language) async throws -> TranslationResult {
         guard canHandle(text) else {
             throw text.isEmpty ? TranslationError.empty : TranslationError.tooLong
         }
@@ -31,8 +31,15 @@ final class OpenAICompatibleService: TranslationService {
             ?? target.maximalIdentifier
         let system = """
         Translate the user's text into \(langName). \
-        Output only the translation: no explanation, no quotes. \
-        Preserve the original line breaks. \
+        Respond with exactly this format and nothing else: \
+        <translation>the translation</translation> \
+        <source-pronunciation>reading of the source text aloud</source-pronunciation> \
+        <target-pronunciation>reading of the translation aloud</target-pronunciation> \
+        Pronunciation scheme by script: IPA for Latin-script languages, \
+        Hanyu Pinyin with tone marks for Chinese, \
+        Hepburn romaji for Japanese, Revised Romanization for Korean. \
+        Omit both pronunciation tags when the text is longer than two sentences. \
+        Preserve the original line breaks inside <translation>. \
         Keep code, URLs, and proper nouns unchanged.
         """
 
@@ -56,6 +63,6 @@ final class OpenAICompatibleService: TranslationService {
             throw TranslationError.http(status: http.statusCode, body: bodyText)
         }
 
-        return try config.provider.extractTranslation(from: data)
+        return try config.provider.extractResult(from: data)
     }
 }

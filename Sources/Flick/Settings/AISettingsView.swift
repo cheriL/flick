@@ -151,7 +151,7 @@ struct AISettingsView: View {
             do {
                 let translated = try await svc.translate("hello", to: Locale.Language(identifier: "zh-Hans"))
                 await MainActor.run {
-                    testResult = "✓ \(translated)"
+                    testResult = "✓ \(translated.translation)"
                     isTesting = false
                 }
             } catch {

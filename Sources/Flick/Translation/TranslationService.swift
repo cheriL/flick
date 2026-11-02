@@ -1,5 +1,11 @@
 import Foundation
 
+struct TranslationResult: Equatable {
+    let translation: String
+    let sourcePronunciation: String?
+    let targetPronunciation: String?
+}
+
 protocol TranslationService: AnyObject {
     var displayName: String { get }
 
@@ -7,7 +13,7 @@ protocol TranslationService: AnyObject {
     func canHandle(_ text: String) -> Bool
 
     /// Translate `text` into `target`. Implementations must respect task cancellation.
-    func translate(_ text: String, to target: Locale.Language) async throws -> String
+    func translate(_ text: String, to target: Locale.Language) async throws -> TranslationResult
 }
 
 enum TranslationError: LocalizedError, Equatable {
