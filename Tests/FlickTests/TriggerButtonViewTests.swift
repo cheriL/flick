@@ -3,8 +3,8 @@ import Testing
 
 @Suite @MainActor final class TriggerButtonViewTests {
 
-    @Test func iconSystemNameMatches() {
+    @Test func glyphCharacterMatches() {
         let view = TriggerButtonView(onTap: {})
-        #expect(view.iconSystemName == "f.square.fill")
+        #expect(view.glyphCharacter == "F")
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Owns the menu-bar popup `NSPanel`. We host it directly (rather than via SwiftUI's
 /// `MenuBarExtra`) so we control show/hide/position and the visual-effect backdrop.
+@MainActor
 final class MenuBarController {
     private let store: ConfigStore
     private let panel: FloatingPanelController
@@ -81,12 +82,24 @@ final class MenuBarController {
 
     private func configureStatusItem() {
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "f.square.fill",
-                               accessibilityDescription: "Flick")
-        // `NSImage(systemSymbolName:)` defaults to `isTemplate = true`, so the menu bar
-        // renders the glyph as a monochrome mask against light/dark backgrounds.
-        // Routing the click through `action` gives us standard AppKit status-item toggle semantics.
+        button.image = statusItemTemplateImage()
+        // `isTemplate = true` renders the glyph as a monochrome mask against
+        // light/dark menu-bar backgrounds.
         button.toolTip = "Flick"
+    }
+
+    private func statusItemTemplateImage() -> NSImage? {
+        let view = FlickBubbleGlyph(side: 20,
+                                    bubbleStyle: AnyShapeStyle(.black),
+                                    glyphColor: .clear,
+                                    knockoutGlyph: true,
+                                    glyphScale: 0.48)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        guard let image = renderer.nsImage else { return nil }
+        image.isTemplate = true
+        image.accessibilityDescription = "Flick"
+        return image
     }
 
     @objc private func toggleMenu() {
