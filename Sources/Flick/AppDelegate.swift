@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static let shared = AppDelegate()
     let store = ConfigStore()

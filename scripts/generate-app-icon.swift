@@ -1,19 +1,30 @@
 #!/usr/bin/env swift
-// Renders `f.square.fill` (palette: white f on green square) to a multi-resolution .icns
-// for the Flick bundle. Run from the project root; output lands at Resources/Flick.icns.
+// Renders the Flick bubble glyph (green bubble + white F on transparent background)
+// to a multi-resolution .icns. Run from the project root; output at Resources/Flick.icns.
 
 import SwiftUI
 import AppKit
 import Foundation
 
+struct BubbleTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.width, y: 0))
+        p.addLine(to: CGPoint(x: 0, y: rect.height))
+        p.addLine(to: CGPoint(x: rect.width * 0.4, y: 0))
+        p.closeSubpath()
+        return p
+    }
+}
+
+let flickGradient = LinearGradient(
+    colors: [Color(red: 0.227, green: 0.855, blue: 0.584),
+             Color(red: 0.071, green: 0.757, blue: 0.733)],
+    startPoint: .top, endPoint: .bottom)
+
 @MainActor
 func renderHighRes(to url: URL) {
-    let view = Image(systemName: "f.square.fill")
-        .font(.system(size: 1024, weight: .regular))
-        .symbolRenderingMode(.palette)
-        .foregroundStyle(.white, Color(red: 0.20, green: 0.78, blue: 0.35))
-        .frame(width: 1024, height: 1024)
-
+    let view = FlickBubbleIcon(side: 1024)
     let renderer = ImageRenderer(content: view)
     renderer.scale = 1.0
 
@@ -21,10 +32,26 @@ func renderHighRes(to url: URL) {
           let tiff = nsImage.tiffRepresentation,
           let bitmap = NSBitmapImageRep(data: tiff),
           let png = bitmap.representation(using: .png, properties: [:]) else {
-        FileHandle.standardError.write("render failed\n".data(using: .utf8)!)
+        FileHandle.standardError.write(Data("render failed\n".utf8))
         exit(1)
     }
     try? png.write(to: url)
+}
+
+struct FlickBubbleIcon: View {
+    let side: CGFloat
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: side * 0.2237, style: .continuous)
+                .fill(flickGradient)
+                .frame(width: side * 0.94, height: side * 0.94)
+            Text("F")
+                .font(.system(size: side * 0.55, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .frame(width: side, height: side)
+    }
 }
 
 func runShell(_ launchPath: String, _ args: [String]) {
