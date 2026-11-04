@@ -1,12 +1,12 @@
-# Flick
-
-One-click translation for selected text on macOS.
-
-[![license](https://img.shields.io/badge/license-GPL%20v3-blue.svg?style=flat-square)](LICENSE)
-[![platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey.svg?style=flat-square)](https://www.apple.com/macos/)
-[![release](https://img.shields.io/github/v/release/cheriL/flick.svg?style=flat-square&include_prereleases)](https://github.com/cheriL/flick/releases)
-
-[English](README.md) · [中文](README.zh-CN.md)
+<div align="center">
+  <img src="Resources/app-icon.png" width="138" />
+  <h1>Flick</h1>
+  <p><b>Select text anywhere, translate in one click.</b></p>
+  <p>English · <a href="README.zh-CN.md">中文</a></p>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-GPL%20v3-blue.svg?style=flat-square"></a>
+  <a href="https://www.apple.com/macos/"><img alt="platform" src="https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey.svg?style=flat-square"></a>
+  <a href="https://github.com/cheriL/flick/releases"><img alt="release" src="https://img.shields.io/github/v/release/cheriL/flick.svg?style=flat-square&include_prereleases"></a>
+</div>
 
 ## Requirements
 
