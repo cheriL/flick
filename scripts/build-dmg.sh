@@ -44,6 +44,7 @@ rm -f "${DMG_PATH}"
 echo "==> packaging ${DMG_PATH}"
 create-dmg \
     --volname "${APP_NAME}" \
+    --volicon "Resources/Flick.icns" \
     --window-size 600 400 \
     --icon-size 100 \
     --icon "${APP_NAME}.app" 175 190 \
