@@ -45,7 +45,7 @@ final class TextSelectionMonitor {
     /// short-circuits before AX or notifications, and any previously-seen selection is forgotten.
     var isEnabled: Bool = true
 
-    init(provider: SelectionProvider, interval: TimeInterval = 0.3) {
+    init(provider: SelectionProvider, interval: TimeInterval = 0.5) {
         self.provider = provider
         self.interval = interval
     }
