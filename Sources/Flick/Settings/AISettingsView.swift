@@ -204,6 +204,7 @@ enum BaseURLPresets {
         "https://api.openai.com/v1",
         "https://api.deepseek.com/v1",
         "https://open.bigmodel.cn/api/paas/v4",
+        "https://open.bigmodel.cn/api/coding/paas/v4",
     ]
 }
 
