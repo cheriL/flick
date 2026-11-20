@@ -19,7 +19,17 @@ struct TriggerButtonView: View {
                 .shadow(color: Color.black.opacity(0.22), radius: 2, x: 0, y: 1)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .help("Translate")
+        .buttonStyle(TriggerButtonStyle())
+    }
+}
+
+/// Press feedback fires on mouse-down — `.plain` gives none, so a click on the
+/// trigger read as dead until the result panel replaced it.
+private struct TriggerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
