@@ -59,39 +59,29 @@ final class FloatingPanelController {
     func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
         installMonitors()
         let screen = screenFrame(near: cursor)
-        let host = makeResultHost(original: original, state: state, onRetry: onRetry)
-        // Content must be attached and laid out before positioning: the panel's
-        // real size comes from the hosting view's fitting size, and positioning
-        // with a placeholder rect lets the content-driven resize extend past the
-        // screen bottom (behind the Dock) without ever being re-clamped.
-        host.layoutSubtreeIfNeeded()
-        let fallback = CGSize(width: 360, height: 140)
-        var size = host.fittingSize
-        if size.width <= 0 { size.width = fallback.width }
-        if size.height <= 0 { size.height = fallback.height }
-        size.height = min(size.height, screen.height - 24)
 
-        // Content swap on an already-visible panel (loading → result): keep the
-        // top-left anchor and grow downward — the intermediate frames point at
-        // where the content lands — instead of re-anchoring at the cursor.
-        if resultActive, resultPanel.isVisible {
+        // Update on an already-visible panel (loading → result, then streaming
+        // refreshes every ~50ms): swap the root view in place and grow the frame
+        // from the top-left anchor. Re-creating the hosting view would reset its
+        // fade on every delta and read as flicker — updates must continue from
+        // the on-screen presentation, never restart it.
+        if resultActive, resultPanel.isVisible,
+           let existing = resultPanel.contentView as? NSHostingView<ResultWindowView> {
+            existing.rootView = ResultWindowView(original: original, state: state, onRetry: onRetry)
+            existing.layoutSubtreeIfNeeded()
+            let size = clampedResultSize(of: existing.fittingSize, on: screen)
             let current = resultPanel.frame
-            let top = current.maxY
-            var origin = NSPoint(x: current.minX, y: top - size.height)
+            var origin = NSPoint(x: current.minX, y: current.maxY - size.height)
             origin.y = max(origin.y, screen.minY)
             origin.x = min(max(origin.x, screen.minX + 8), screen.maxX - size.width - 8)
             let final = NSRect(origin: origin, size: size)
-            host.alphaValue = 0
-            resultPanel.contentView = host
             if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
                 resultPanel.setFrame(final, display: true)
-                host.alphaValue = 1
             } else {
                 NSAnimationContext.runAnimationGroup { ctx in
                     ctx.duration = 0.18
                     ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                     resultPanel.animator().setFrame(final, display: true)
-                    host.animator().alphaValue = 1
                 }
             }
             triggerPanel.orderOut(nil)
@@ -99,6 +89,13 @@ final class FloatingPanelController {
             return
         }
 
+        let host = makeResultHost(original: original, state: state, onRetry: onRetry)
+        // Content must be attached and laid out before positioning: the panel's
+        // real size comes from the hosting view's fitting size, and positioning
+        // with a placeholder rect lets the content-driven resize extend past the
+        // screen bottom (behind the Dock) without ever being re-clamped.
+        host.layoutSubtreeIfNeeded()
+        let size = clampedResultSize(of: host.fittingSize, on: screen)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
         resultPanel.contentView = host
         fadeGeneration += 1
@@ -106,6 +103,14 @@ final class FloatingPanelController {
         triggerPanel.orderOut(nil)
         triggerActive = false
         resultActive = true
+    }
+
+    private func clampedResultSize(of fitting: CGSize, on screen: CGRect) -> CGSize {
+        let fallback = CGSize(width: 360, height: 140)
+        var size = fitting
+        if size.width <= 0 { size.width = fallback.width }
+        if size.height <= 0 { size.height = fallback.height }
+        return CGSize(width: size.width, height: min(size.height, screen.height - 24))
     }
 
     /// Notified when `dismiss()` runs, after panels are hidden and monitors are
