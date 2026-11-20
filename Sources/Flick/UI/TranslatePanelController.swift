@@ -68,10 +68,10 @@ final class TranslatePanelController {
         inFlightTask = nil
 
         let content = TranslatePanelContent(
-            onTranslate: { [weak self] text, target in
+            onTranslate: { [weak self] text, target, onDelta in
                 guard let self else { throw CancellationError() }
                 let service = OpenAICompatibleService(config: self.store.load())
-                return try await service.translate(text, to: target)
+                return try await service.translateStreaming(text, to: target, onDelta: onDelta)
             },
             onTaskStart: { [weak self] task in
                 self?.inFlightTask = task

@@ -16,7 +16,7 @@ enum Provider: String, Codable, CaseIterable, Equatable {
 
     // MARK: - Request body
 
-    func makeRequest(config: AIConfig, system: String, user: String) throws -> URLRequest {
+    func makeRequest(config: AIConfig, system: String, user: String, stream: Bool = false) throws -> URLRequest {
         guard let url = endpoint(forBaseURL: config.baseURL) else {
             throw TranslationError.network("invalid base URL: \(config.baseURL)")
         }
@@ -31,6 +31,9 @@ enum Provider: String, Codable, CaseIterable, Equatable {
                 ["role": "user", "content": user],
             ],
         ]
+        if stream {
+            body["stream"] = true
+        }
         // Both fields are silently ignored by non-reasoning models but disable the `<think>` prelude
         // on reasoning models (OpenAI o-series, DeepSeek-V3.1).
         if config.disableThinking {
@@ -101,6 +104,34 @@ enum Provider: String, Codable, CaseIterable, Equatable {
               let range = Range(match.range(at: 1), in: text) else { return nil }
         let value = text[range].trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
+    }
+
+    // MARK: - Streaming
+
+    /// Content of `choices[0].delta.content` in one SSE chunk's JSON payload.
+    /// "" for role-only / empty deltas; nil for payloads without a delta shape.
+    static func streamDelta(from data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = obj["choices"] as? [[String: Any]],
+              let delta = choices.first?["delta"] as? [String: Any] else { return nil }
+        return delta["content"] as? String ?? ""
+    }
+
+    /// Presentable portion of a still-streaming tagged response. nil = nothing
+    /// to show yet (no complete `<translation>` opener — likely still inside
+    /// `<think>`). Once `</translation>` closes, the text is final and callers
+    /// can stop updating.
+    static func partialTranslation(from raw: String) -> String? {
+        let stripped = stripThinkBlocks(raw)
+        guard let open = stripped.range(of: #"<translation[^>]*>"#, options: .regularExpression) else {
+            return nil
+        }
+        let after = stripped[open.upperBound...]
+        if let close = after.range(of: "</translation>") {
+            let text = after[..<close.lowerBound]
+            return text.isEmpty ? nil : String(text)
+        }
+        return String(after)
     }
 
     /// Models occasionally fence the tagged block; tags match fine inside fences,
