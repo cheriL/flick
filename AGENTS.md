@@ -141,7 +141,6 @@ Sources/Flick/
     PanelPositioning.swift              # cursor-to-screen anchoring
     PanelTransitions.swift              # shared panel fade/scale show-hide
     ResultWindowView.swift              # loading/success/failure content
-    ResultPanelChrome.swift             # rounded white background + shadow
     TranslatePanelController.swift      # menu-bar manual-translate panel host
     TranslatePanelContent.swift         # SwiftUI view for the manual panel
   Translation/

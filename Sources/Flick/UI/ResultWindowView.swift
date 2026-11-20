@@ -22,23 +22,26 @@ struct ResultWindowView: View {
     var failureIconName: String? { "xmark.circle" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(original)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
+        GlassEffectContainer(spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(original)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
 
-            Divider().opacity(0.4)
+                Divider().opacity(0.4)
 
-            ScrollView(.vertical) {
-                content
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView(.vertical) {
+                    content
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 240)
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxHeight: 240)
-            .fixedSize(horizontal: false, vertical: true)
+            .padding(14)
+            .frame(width: 360)
+            .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
-        .padding(14)
-        .frame(width: 360)
     }
 
     @ViewBuilder
