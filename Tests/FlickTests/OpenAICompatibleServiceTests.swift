@@ -7,6 +7,7 @@ import Testing
     init() {
         // Reset static mock state so tests don't leak into each other.
         MockURLProtocol.jsonResponder = nil
+        MockURLProtocol.textResponder = nil
         MockURLProtocol.lastRequest = nil
     }
 
@@ -183,6 +184,92 @@ import Testing
         #expect(system.contains("Pinyin"))
     }
 
+    // MARK: - streaming
+
+    @Test func translateStreamingEmitsDeltasAndParsesFinalResult() async throws {
+        let sse = """
+        data: {"choices":[{"delta":{"role":"assistant"}}]}
+
+        data: {"choices":[{"delta":{"content":"<translation>你"}}]}
+
+        data: {"choices":[{"delta":{"content":"好</translation>"}}]}
+
+        data: [DONE]
+
+        """
+        MockURLProtocol.textResponder = { _ in (200, sse) }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        var deltas: [String] = []
+        let result = try await svc.translateStreaming("hello", to: Locale.Language(identifier: "zh-Hans")) {
+            deltas.append($0)
+        }
+        #expect(result.translation == "你好")
+        #expect(result.sourcePronunciation == nil)
+        #expect(deltas == ["<translation>你", "<translation>你好</translation>"])
+    }
+
+    @Test func translateStreamingRequestCarriesStreamTrue() async throws {
+        MockURLProtocol.jsonResponder = { _ in (200, ["choices": [["message": ["content": "你好"]]]]) }
+        var captured: [String: Any]?
+        MockURLProtocol.jsonResponder = { request in
+            captured = Self.jsonBody(of: request)
+            return (200, ["choices": [["message": ["content": "你好"]]]])
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        _ = try await svc.translateStreaming("hello", to: Locale.Language(identifier: "zh-Hans")) { _ in }
+        let body = try #require(captured)
+        #expect(body["stream"] as? Bool == true)
+    }
+
+    @Test func translateStreamingFallsBackToPlainJSONWhenNoSSE() async throws {
+        // Endpoint ignored `stream: true` and returned an ordinary completion —
+        // no deltas may fire, and the result still parses.
+        MockURLProtocol.textResponder = { _ in
+            (200, #"{"choices":[{"message":{"content":"你好"}}]}"#)
+        }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-test"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        var deltaCount = 0
+        let result = try await svc.translateStreaming("hello", to: Locale.Language(identifier: "zh-Hans")) { _ in
+            deltaCount += 1
+        }
+        #expect(result.translation == "你好")
+        #expect(deltaCount == 0)
+    }
+
+    @Test func translateStreamingMapsHTTPError() async throws {
+        MockURLProtocol.textResponder = { _ in (401, "bad key") }
+        let session = URLSession(configuration: .mock())
+        var cfg = AIConfig.default
+        cfg.apiKey = "sk-bad"
+        let svc = OpenAICompatibleService(config: cfg, session: session)
+
+        do {
+            _ = try await svc.translateStreaming("hello", to: Locale.Language(identifier: "zh-Hans")) { _ in }
+            Issue.record("expected error")
+        } catch let e as TranslationError {
+            if case .http(let code, let body) = e {
+                #expect(code == 401)
+                #expect(body == "bad key")
+            } else {
+                Issue.record("wrong error: \(e)")
+            }
+        } catch {
+            Issue.record("wrong error type: \(error)")
+        }
+    }
+
     // MARK: - thinking suppression params
 
     @Test func requestBodyIncludesThinkingSuppressionByDefault() async throws {
@@ -346,19 +433,29 @@ import Testing
 
 final class MockURLProtocol: URLProtocol {
     nonisolated(unsafe) static var jsonResponder: ((URLRequest) -> (Int, [String: Any]))?
+    /// Raw-body responder for non-JSON payloads (SSE streams, error bodies).
+    nonisolated(unsafe) static var textResponder: ((URLRequest) -> (Int, String))?
     nonisolated(unsafe) static var lastRequest: URLRequest?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        guard let responder = MockURLProtocol.jsonResponder else {
+        MockURLProtocol.lastRequest = request
+        let status: Int
+        let data: Data
+        if let textResponder = MockURLProtocol.textResponder {
+            let (code, body) = textResponder(request)
+            status = code
+            data = Data(body.utf8)
+        } else if let responder = MockURLProtocol.jsonResponder {
+            let (code, body) = responder(request)
+            status = code
+            data = (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
+        } else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
-        MockURLProtocol.lastRequest = request
-        let (status, body) = responder(request)
-        let data = (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
         let resp = HTTPURLResponse(url: request.url!, statusCode: status,
                                    httpVersion: "HTTP/1.1", headerFields: nil)!
         client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)

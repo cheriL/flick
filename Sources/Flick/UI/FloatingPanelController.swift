@@ -18,13 +18,19 @@ final class FloatingPanelController {
     private var resultActive = false
     private var escMonitor: Any?
     private var outsideClickMonitor: Any?
+    /// Bumped on every show/dismiss so a fade-out completion can tell whether
+    /// the panel it's about to orderOut is still the dismissed one (a re-show
+    /// during the fade must not be hidden by the stale completion).
+    private var fadeGeneration = 0
 
     init() {
         configure(triggerPanel)
         configure(resultPanel)
+        // The result panel's depth comes from a window shadow over the glass;
+        // the trigger glyph paints its own SwiftUI shadow.
+        resultPanel.hasShadow = true
         resultPanel.isReleasedWhenClosed = false
         triggerPanel.isReleasedWhenClosed = false
-        // Install both monitors at init so they're active whenever any panel is showing.
         installMonitors()
     }
 
@@ -35,42 +41,67 @@ final class FloatingPanelController {
     // MARK: - Public API
 
     func showTrigger(at cursor: CGPoint, text: String, onTap: @escaping () -> Void) {
+        installMonitors()
         let size = CGSize(width: 28, height: 28)
         let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
-        triggerPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         triggerPanel.contentView = NSHostingView(
             rootView: TriggerButtonView(onTap: onTap)
         )
-        triggerPanel.orderFrontRegardless()
+        fadeGeneration += 1
+        PanelTransitions.present(triggerPanel, frame: NSRect(origin: origin, size: size))
         resultPanel.orderOut(nil)
         resultActive = false
         triggerActive = true
     }
 
     func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
+        installMonitors()
         let screen = screenFrame(near: cursor)
-        let root = ResultWindowView(original: original, state: state, onRetry: onRetry)
-        let container = PanelContainerView(rootView: root)
-        resultPanel.contentView = container
+
+        // Update on an already-visible panel (loading → result, then streaming
+        // refreshes every ~50ms): swap the root view in place and resize 1:1,
+        // unanimated, from the top-left anchor. Easing re-targeted at ~20Hz
+        // reads as a pulse — a direct step per refresh reads as the panel
+        // honestly following its content.
+        if resultActive, resultPanel.isVisible,
+           let existing = resultPanel.contentView as? NSHostingView<ResultWindowView> {
+            existing.rootView = ResultWindowView(original: original, state: state, onRetry: onRetry)
+            existing.layoutSubtreeIfNeeded()
+            let size = clampedResultSize(of: existing.fittingSize, on: screen)
+            let current = resultPanel.frame
+            var origin = NSPoint(x: current.minX, y: current.maxY - size.height)
+            origin.y = max(origin.y, screen.minY)
+            origin.x = min(max(origin.x, screen.minX + 8), screen.maxX - size.width - 8)
+            resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
+            triggerPanel.orderOut(nil)
+            triggerActive = false
+            return
+        }
+
+        let host = makeResultHost(original: original, state: state, onRetry: onRetry)
         // Content must be attached and laid out before positioning: the panel's
         // real size comes from the hosting view's fitting size, and positioning
         // with a placeholder rect lets the content-driven resize extend past the
         // screen bottom (behind the Dock) without ever being re-clamped.
-        container.layoutSubtreeIfNeeded()
-        let fallback = CGSize(width: 360, height: 140)
-        var size = container.fittingSize
-        if size.width <= 0 { size.width = fallback.width }
-        if size.height <= 0 { size.height = fallback.height }
-        size.height = min(size.height, screen.height - 24)
-
+        host.layoutSubtreeIfNeeded()
+        let size = clampedResultSize(of: host.fittingSize, on: screen)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
-        resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
-        resultPanel.orderFrontRegardless()
+        resultPanel.contentView = host
+        fadeGeneration += 1
+        PanelTransitions.present(resultPanel, frame: NSRect(origin: origin, size: size))
         triggerPanel.orderOut(nil)
         triggerActive = false
         resultActive = true
+    }
+
+    private func clampedResultSize(of fitting: CGSize, on screen: CGRect) -> CGSize {
+        let fallback = CGSize(width: 360, height: 140)
+        var size = fitting
+        if size.width <= 0 { size.width = fallback.width }
+        if size.height <= 0 { size.height = fallback.height }
+        return CGSize(width: size.width, height: min(size.height, screen.height - 24))
     }
 
     /// Notified when `dismiss()` runs, after panels are hidden and monitors are
@@ -78,8 +109,11 @@ final class FloatingPanelController {
     var onDismiss: (() -> Void)?
 
     func dismiss() {
-        triggerPanel.orderOut(nil)
-        resultPanel.orderOut(nil)
+        fadeGeneration += 1
+        let gen = fadeGeneration
+        let isValid = { [weak self] in self?.fadeGeneration == gen }
+        PanelTransitions.dismissAnimated(triggerPanel, isValid: isValid)
+        PanelTransitions.dismissAnimated(resultPanel, isValid: isValid)
         triggerActive = false
         resultActive = false
         stopMonitors()
@@ -100,6 +134,21 @@ final class FloatingPanelController {
 
     // MARK: - Private
 
+    /// Hosts `ResultWindowView` on the glass panel. Same layer recipe as
+    /// TranslatePanelController: transparent hosting view (an opaque backing
+    /// shows through the glass as a rectangular black line) rounded to the
+    /// glass shape to clip any straggling rectangular artifact.
+    private func makeResultHost(original: String, state: ResultState, onRetry: @escaping () -> Void) -> NSHostingView<ResultWindowView> {
+        let host = NSHostingView(
+            rootView: ResultWindowView(original: original, state: state, onRetry: onRetry)
+        )
+        host.wantsLayer = true
+        host.layer?.backgroundColor = NSColor.clear.cgColor
+        host.layer?.cornerRadius = 10
+        host.layer?.masksToBounds = true
+        return host
+    }
+
     /// Screen rect to place the panel on. Resolved from the cursor, not `NSScreen.main`
     /// (see `PanelPositioning.screenFrame`). Uses `visibleFrame` — the raw `frame`
     /// includes the Dock and menu-bar strips, so clamping against it parks panels
@@ -119,8 +168,7 @@ final class FloatingPanelController {
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         panel.backgroundColor = .clear
-        // Both panels: no window shadow (the chrome / SwiftUI shadow handles depth).
-        // Both inherit system appearance via the adaptive chrome view.
+        panel.isOpaque = false
         panel.hasShadow = false
     }
 
@@ -158,36 +206,4 @@ final class FloatingPanelController {
         escMonitor = nil
         outsideClickMonitor = nil
     }
-}
-
-/// Stacks a `PanelChromeView` (material + rounded corner + shadow backing) under the
-/// SwiftUI hosting view that renders `ResultWindowView`. Set as the result panel's content view.
-private final class PanelContainerView: NSView {
-    let chrome: NSHostingView<PanelChromeView>
-    let host: NSHostingView<ResultWindowView>
-
-    init(rootView: ResultWindowView) {
-        self.chrome = NSHostingView(rootView: PanelChromeView())
-        self.host = NSHostingView(rootView: rootView)
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.masksToBounds = false
-        addSubview(chrome)
-        addSubview(host)
-        chrome.translatesAutoresizingMaskIntoConstraints = false
-        host.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            chrome.leadingAnchor.constraint(equalTo: leadingAnchor),
-            chrome.trailingAnchor.constraint(equalTo: trailingAnchor),
-            chrome.topAnchor.constraint(equalTo: topAnchor),
-            chrome.bottomAnchor.constraint(equalTo: bottomAnchor),
-            host.leadingAnchor.constraint(equalTo: leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: trailingAnchor),
-            host.topAnchor.constraint(equalTo: topAnchor),
-            host.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
 }

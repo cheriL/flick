@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TranslatePanelContent: View {
-    let onTranslate: (String, Locale.Language) async throws -> TranslationResult
+    let onTranslate: (String, Locale.Language, @escaping (String) -> Void) async throws -> TranslationResult
     let onTaskStart: (Task<Void, Never>) -> Void
 
     @State private var input: String = ""
@@ -42,6 +42,7 @@ struct TranslatePanelContent: View {
     }
     private var isLoading: Bool {
         if case .loading = state { return true }
+        if case .partial = state { return true }
         return false
     }
     private var trimmedInput: String {
@@ -79,11 +80,10 @@ struct TranslatePanelContent: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            Text(value)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+            SelectableText(text: value,
+                           color: .secondary,
+                           font: NSFont.systemFont(ofSize: 12),
+                           maxHeight: nil)
         }
     }
 
@@ -102,10 +102,10 @@ struct TranslatePanelContent: View {
             }
         case .success(let result):
             VStack(alignment: .leading, spacing: 6) {
-                Text(result.translation)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                SelectableText(text: result.translation,
+                               color: .primary,
+                               font: NSFont.systemFont(ofSize: 13),
+                               maxHeight: nil)
                 if let source = result.sourcePronunciation {
                     readingRow(label: "Source", value: source)
                 }
@@ -113,6 +113,11 @@ struct TranslatePanelContent: View {
                     readingRow(label: "Translation", value: target)
                 }
             }
+        case .partial(let text):
+            SelectableText(text: text,
+                           color: .primary,
+                           font: NSFont.systemFont(ofSize: 13),
+                           maxHeight: nil)
         case .failure(let message):
             VStack(alignment: .leading, spacing: 6) {
                 Text(message)
@@ -131,9 +136,21 @@ struct TranslatePanelContent: View {
         guard !text.isEmpty else { return }
         let target = Locale.Language(identifier: targetCode)
         state = .loading(text)
+        var lastShown: String?
+        var lastRender = Date.distantPast
         let task = Task {
             do {
-                let result = try await onTranslate(text, target)
+                let result = try await onTranslate(text, target) { partial in
+                    guard let presentable = Provider.partialTranslation(from: partial),
+                          presentable != lastShown,
+                          Date().timeIntervalSince(lastRender) >= 0.05 else { return }
+                    lastShown = presentable
+                    lastRender = Date()
+                    let snapshot = presentable
+                    Task { @MainActor in
+                        state = .partial(snapshot)
+                    }
+                }
                 if Task.isCancelled { return }
                 await MainActor.run { state = .success(result) }
             } catch {
@@ -150,6 +167,9 @@ struct TranslatePanelContent: View {
 enum TranslateState: Equatable {
     case idle
     case loading(String)
+    /// Translation still streaming in — rendered like the final text, without
+    /// pronunciation rows (those are only known once the full response is parsed).
+    case partial(String)
     case success(TranslationResult)
     case failure(String)
 }

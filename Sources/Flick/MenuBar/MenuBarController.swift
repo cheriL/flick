@@ -160,24 +160,37 @@ final class MenuBarController {
             guard let self else { return }
             let target = Locale.Language(identifier: Locale.preferredLanguages.first ?? "en")
             let service = OpenAICompatibleService(config: store.load())
+            let retry = { [weak self] in
+                guard let self else { return }
+                self.runTranslation(text: text, at: cursor)
+            }
 
             do {
-                let translated = try await service.translate(text, to: target)
+                var lastShown: String?
+                var lastRender = Date.distantPast
+                let translated = try await service.translateStreaming(text, to: target) { [weak self] partial in
+                    guard let presentable = Provider.partialTranslation(from: partial),
+                          presentable != lastShown,
+                          Date().timeIntervalSince(lastRender) >= 0.05 else { return }
+                    lastShown = presentable
+                    lastRender = Date()
+                    let snapshot = presentable
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.currentTask?.isCancelled != true else { return }
+                        self.panel.showResult(original: text, state: .success(snapshot), at: cursor, onRetry: retry)
+                    }
+                }
                 if Task.isCancelled { return }
                 await MainActor.run {
                     if Task.isCancelled { return }
-                    self.panel.showResult(original: text, state: .success(translated.translation), at: cursor, onRetry: { [weak self] in
-                        self?.runTranslation(text: text, at: cursor)
-                    })
+                    self.panel.showResult(original: text, state: .success(translated.translation), at: cursor, onRetry: retry)
                 }
             } catch {
                 if Task.isCancelled { return }
                 let msg = (error as? TranslationError)?.errorDescription ?? error.localizedDescription
                 await MainActor.run {
                     if Task.isCancelled { return }
-                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, onRetry: { [weak self] in
-                        self?.runTranslation(text: text, at: cursor)
-                    })
+                    self.panel.showResult(original: text, state: .failure(msg), at: cursor, onRetry: retry)
                 }
             }
         }
