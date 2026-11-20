@@ -61,10 +61,10 @@ final class FloatingPanelController {
         let screen = screenFrame(near: cursor)
 
         // Update on an already-visible panel (loading → result, then streaming
-        // refreshes every ~50ms): swap the root view in place and grow the frame
-        // from the top-left anchor. Re-creating the hosting view would reset its
-        // fade on every delta and read as flicker — updates must continue from
-        // the on-screen presentation, never restart it.
+        // refreshes every ~50ms): swap the root view in place and resize 1:1,
+        // unanimated, from the top-left anchor. Easing re-targeted at ~20Hz
+        // reads as a pulse — a direct step per refresh reads as the panel
+        // honestly following its content.
         if resultActive, resultPanel.isVisible,
            let existing = resultPanel.contentView as? NSHostingView<ResultWindowView> {
             existing.rootView = ResultWindowView(original: original, state: state, onRetry: onRetry)
@@ -74,16 +74,7 @@ final class FloatingPanelController {
             var origin = NSPoint(x: current.minX, y: current.maxY - size.height)
             origin.y = max(origin.y, screen.minY)
             origin.x = min(max(origin.x, screen.minX + 8), screen.maxX - size.width - 8)
-            let final = NSRect(origin: origin, size: size)
-            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                resultPanel.setFrame(final, display: true)
-            } else {
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.18
-                    ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    resultPanel.animator().setFrame(final, display: true)
-                }
-            }
+            resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
             triggerPanel.orderOut(nil)
             triggerActive = false
             return
