@@ -11,6 +11,8 @@ final class TranslatePanelController {
     private var escMonitor: Any?
     private var outsideClickMonitor: Any?
     private var statusItemAnchor: NSRect = .zero
+    /// See FloatingPanelController — guards fade-out completions against re-shows.
+    private var fadeGeneration = 0
 
     init(store: ConfigStore,
          selectionPanel: FloatingPanelController,
@@ -48,7 +50,9 @@ final class TranslatePanelController {
     }
 
     func hide() {
-        panel.orderOut(nil)
+        fadeGeneration += 1
+        let gen = fadeGeneration
+        PanelTransitions.dismissAnimated(panel) { [weak self] in self?.fadeGeneration == gen }
         stopMonitors()
         inFlightTask?.cancel()
         inFlightTask = nil
@@ -91,13 +95,17 @@ final class TranslatePanelController {
         }
 
         sizePanelToContent()
-        positionPanel()
-        // An LSUIElement app can't promote a window to key on its own — the
-        // window manager refuses because the app isn't on the active-app list.
-        // `NSApp.activate` here briefly raises the app so the next
-        // `makeKeyAndOrderFront` actually takes.
-        NSApp.activate(ignoringOtherApps: true)
-        panel.makeKeyAndOrderFront(nil)
+        let frame = positionPanel()
+        fadeGeneration += 1
+        PanelTransitions.present(panel, frame: frame) { [weak self] in
+            guard let self else { return }
+            // An LSUIElement app can't promote a window to key on its own — the
+            // window manager refuses because the app isn't on the active-app list.
+            // `NSApp.activate` here briefly raises the app so the next
+            // `makeKeyAndOrderFront` actually takes.
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+        }
         // Re-focus the input field after layout — `makeNSView` only fires once.
         DispatchQueue.main.async { [weak self] in
             self?.focusFirstTextView()
@@ -128,7 +136,7 @@ final class TranslatePanelController {
         panel.setContentSize(fitting)
     }
 
-    private func positionPanel() {
+    private func positionPanel() -> NSRect {
         let panelSize = panel.frame.size
         let button = statusItemAnchor
         // `visibleFrame`, not `frame`: the raw frame includes the Dock strip, and
@@ -160,7 +168,7 @@ final class TranslatePanelController {
         )
 
         let originY = max(button.minY - panelSize.height, screen.minY)
-        panel.setFrameOrigin(NSPoint(x: clampedX, y: originY))
+        return NSRect(origin: NSPoint(x: clampedX, y: originY), size: panelSize)
     }
 
     private func configure(_ panel: NSPanel) {

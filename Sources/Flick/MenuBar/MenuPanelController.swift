@@ -17,6 +17,8 @@ final class MenuPanelController {
     /// monitor can treat clicks on the button as inside clicks (deferring dismissal to the
     /// button's own toggle action).
     private var statusItemAnchor: NSRect = .zero
+    /// See FloatingPanelController — guards fade-out completions against re-shows.
+    private var fadeGeneration = 0
 
     init(store: ConfigStore, onQuit: @escaping () -> Void) {
         self.store = store
@@ -74,7 +76,9 @@ final class MenuPanelController {
     }
 
     func hide() {
-        panel.orderOut(nil)
+        fadeGeneration += 1
+        let gen = fadeGeneration
+        PanelTransitions.dismissAnimated(panel) { [weak self] in self?.fadeGeneration == gen }
         stopMonitors()
     }
 
@@ -83,8 +87,9 @@ final class MenuPanelController {
     private func show(statusItemFrame: NSRect) {
         statusItemAnchor = statusItemFrame
         sizePanelToContent()
-        positionPanel()
-        panel.orderFrontRegardless()
+        let frame = positionPanel()
+        fadeGeneration += 1
+        PanelTransitions.present(panel, frame: frame)
         installMonitors()
     }
 
@@ -100,7 +105,7 @@ final class MenuPanelController {
 
     /// Place the panel below the status item: left edge meets button's left edge by default;
     /// flip to right-align if the panel would overflow the screen's right edge.
-    private func positionPanel() {
+    private func positionPanel() -> NSRect {
         let panelSize = panel.frame.size
         let button = statusItemAnchor
         let screen = PanelPositioning.screenFrame(
@@ -131,7 +136,7 @@ final class MenuPanelController {
         )
 
         let originY = button.minY - panelSize.height
-        panel.setFrameOrigin(NSPoint(x: clampedX, y: originY))
+        return NSRect(origin: NSPoint(x: clampedX, y: originY), size: panelSize)
     }
 
     private func configure(_ panel: NSPanel) {

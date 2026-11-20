@@ -18,6 +18,10 @@ final class FloatingPanelController {
     private var resultActive = false
     private var escMonitor: Any?
     private var outsideClickMonitor: Any?
+    /// Bumped on every show/dismiss so a fade-out completion can tell whether
+    /// the panel it's about to orderOut is still the dismissed one (a re-show
+    /// during the fade must not be hidden by the stale completion).
+    private var fadeGeneration = 0
 
     init() {
         configure(triggerPanel)
@@ -39,11 +43,11 @@ final class FloatingPanelController {
         let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
 
-        triggerPanel.setFrame(NSRect(origin: origin, size: size), display: true)
         triggerPanel.contentView = NSHostingView(
             rootView: TriggerButtonView(onTap: onTap)
         )
-        triggerPanel.orderFrontRegardless()
+        fadeGeneration += 1
+        PanelTransitions.present(triggerPanel, frame: NSRect(origin: origin, size: size))
         resultPanel.orderOut(nil)
         resultActive = false
         triggerActive = true
@@ -67,8 +71,8 @@ final class FloatingPanelController {
         size.height = min(size.height, screen.height - 24)
 
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
-        resultPanel.setFrame(NSRect(origin: origin, size: size), display: true)
-        resultPanel.orderFrontRegardless()
+        fadeGeneration += 1
+        PanelTransitions.present(resultPanel, frame: NSRect(origin: origin, size: size))
         triggerPanel.orderOut(nil)
         triggerActive = false
         resultActive = true
@@ -79,8 +83,11 @@ final class FloatingPanelController {
     var onDismiss: (() -> Void)?
 
     func dismiss() {
-        triggerPanel.orderOut(nil)
-        resultPanel.orderOut(nil)
+        fadeGeneration += 1
+        let gen = fadeGeneration
+        let isValid = { [weak self] in self?.fadeGeneration == gen }
+        PanelTransitions.dismissAnimated(triggerPanel, isValid: isValid)
+        PanelTransitions.dismissAnimated(resultPanel, isValid: isValid)
         triggerActive = false
         resultActive = false
         stopMonitors()
