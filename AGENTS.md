@@ -54,7 +54,11 @@ before chasing behaviour that has a known cause.
 - **SwiftUI `.textSelection(.enabled)` is unreliable on macOS 26.** After the
   view is re-inserted or window focus moves, click hit-testing silently dies.
   Back read-only selectable text with `NSTextView` — see `SelectableText` in
-  `AISettingsView.swift`.
+  `UI/SelectableText.swift`.
+
+- **Hover tooltips don't render inside `NSHostingView` on macOS 26.** Both
+  SwiftUI `.help()` and AppKit `toolTip` silently no-op on hosted views.
+  Don't add them; if a hint is genuinely needed, render it inline.
 
 - **Multi-display anchoring.** Never use `NSScreen.main` to pick the
   panel's display rect. Flick is a menu-bar accessory and never becomes
@@ -102,6 +106,13 @@ before chasing behaviour that has a known cause.
   from the dropdown silently saves the old value. Sync via the
   `comboBoxSelectionDidChange` delegate + `indexOfSelectedItem` instead — see
   `PresetComboBox` in `AISettingsView.swift`.
+
+- **Re-install event monitors on every show, not once at init.** Panel
+  controllers tear down their ESC / outside-click monitors in `dismiss` /
+  `hide`, so a controller that only installs at init loses its dismissal
+  paths after the first close. Every `show` path calls `installMonitors()`
+  (it stops existing monitors first, so it's idempotent) — see
+  `FloatingPanelController`, `MenuPanelController`, `TranslatePanelController`.
 
 - **NSPanel's default `canBecomeKey` is false.** Subclass and override to
   return `true` — `NSApp.activate` + `makeKeyAndOrderFront` alone isn't
