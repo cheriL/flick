@@ -24,7 +24,6 @@ final class FloatingPanelController {
         configure(resultPanel)
         resultPanel.isReleasedWhenClosed = false
         triggerPanel.isReleasedWhenClosed = false
-        // Install both monitors at init so they're active whenever any panel is showing.
         installMonitors()
     }
 
@@ -35,6 +34,7 @@ final class FloatingPanelController {
     // MARK: - Public API
 
     func showTrigger(at cursor: CGPoint, text: String, onTap: @escaping () -> Void) {
+        installMonitors()
         let size = CGSize(width: 28, height: 28)
         let screen = screenFrame(near: cursor)
         let origin = PanelPositioning.origin(forPanel: size, near: cursor, on: screen)
@@ -50,6 +50,7 @@ final class FloatingPanelController {
     }
 
     func showResult(original: String, state: ResultState, at cursor: CGPoint, onRetry: @escaping () -> Void) {
+        installMonitors()
         let screen = screenFrame(near: cursor)
         let root = ResultWindowView(original: original, state: state, onRetry: onRetry)
         let container = PanelContainerView(rootView: root)
