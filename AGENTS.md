@@ -136,6 +136,7 @@ Sources/Flick/
     RoutedSelectionProvider.swift       # frontmost-app routing: Chrome → AppleScript, rest → AX
   UI/                                   # SwiftUI surfaces
     FloatingPanelController.swift       # near-cursor panel host
+    SelectableText.swift                # NSTextView-backed selectable text (macOS 26 pitfall)
     TriggerButtonView.swift             # palette-style translate button
     PanelPositioning.swift              # cursor-to-screen anchoring
     ResultWindowView.swift              # loading/success/failure content

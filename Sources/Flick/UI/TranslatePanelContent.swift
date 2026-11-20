@@ -79,11 +79,10 @@ struct TranslatePanelContent: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            Text(value)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+            SelectableText(text: value,
+                           color: .secondary,
+                           font: NSFont.systemFont(ofSize: 12),
+                           maxHeight: nil)
         }
     }
 
@@ -102,10 +101,10 @@ struct TranslatePanelContent: View {
             }
         case .success(let result):
             VStack(alignment: .leading, spacing: 6) {
-                Text(result.translation)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                SelectableText(text: result.translation,
+                               color: .primary,
+                               font: NSFont.systemFont(ofSize: 13),
+                               maxHeight: nil)
                 if let source = result.sourcePronunciation {
                     readingRow(label: "Source", value: source)
                 }

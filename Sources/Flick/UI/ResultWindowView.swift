@@ -52,11 +52,10 @@ struct ResultWindowView: View {
                     .foregroundStyle(.secondary)
             }
         case .success(let text):
-            Text(text)
-                .font(.system(size: 16))
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
+            SelectableText(text: text,
+                           color: .primary,
+                           font: NSFont.systemFont(ofSize: 16),
+                           maxHeight: nil)
         case .failure(let message):
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "xmark.circle")
