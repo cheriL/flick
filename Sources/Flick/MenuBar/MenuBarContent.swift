@@ -112,8 +112,11 @@ struct MenuBarContent: View {
 }
 
 /// Plain button style for the action rows. Native NSMenu look: full-width hit area,
-/// ~26pt fixed row height so the three rows stay visually even, subtle press highlight.
+/// ~26pt fixed row height so the three rows stay visually even, hover highlight
+/// (lighter) plus press highlight.
 struct MenuActionButtonStyle: ButtonStyle {
+    @State private var isHovering = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13))
@@ -122,9 +125,20 @@ struct MenuActionButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(configuration.isPressed ? Color.accentColor.opacity(0.20) : Color.clear)
+                    .fill(fillColor(pressed: configuration.isPressed))
             )
             .contentShape(Rectangle())
+            .onHover { hovering in
+                isHovering = hovering
+            }
+            .animation(.easeOut(duration: 0.1), value: isHovering)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+
+    private func fillColor(pressed: Bool) -> Color {
+        if pressed { return Color.accentColor.opacity(0.20) }
+        if isHovering { return Color.accentColor.opacity(0.10) }
+        return .clear
     }
 }
 
